@@ -1,0 +1,736 @@
+{% extends "dashboard/base.html" %}
+
+{% block page_title %}New Session{% endblock %}
+
+{% block content %}
+<div class="new-session-content">
+    <!-- Header -->
+    <div class="session-header">
+        <div class="header-left">
+            <a href="{{ url_for('history') }}" class="back-btn">
+                <i class="fas fa-arrow-left"></i>
+                Back to History
+            </a>
+            <div class="header-info">
+                <h1>Start New Session</h1>
+                <p>Configure and start a new measurement session</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Session Configuration Form -->
+    <div class="config-card">
+        <div class="card-header">
+            <h3>Session Configuration</h3>
+            <p>Set up your measurement session parameters</p>
+        </div>
+        
+        <form id="newSessionForm" class="session-form">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="sessionName">Session Name</label>
+                    <input type="text" id="sessionName" name="sessionName" 
+                           placeholder="Enter session name..." 
+                           value="Session {{ (sessions|length) + 1 if sessions else 1 }}">
+                    <small class="form-hint">Give your session a descriptive name</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="sessionType">Session Type</label>
+                    <select id="sessionType" name="sessionType">
+                        <option value="full">Full Assessment (Both Feet)</option>
+                        <option value="right">Right Foot Only</option>
+                        <option value="left">Left Foot Only</option>
+                        <option value="custom">Custom Points</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="sessionNotes">Session Notes (Optional)</label>
+                <textarea id="sessionNotes" name="sessionNotes" 
+                          placeholder="Add any notes about this session..."></textarea>
+            </div>
+            
+            <!-- Measurement Points Selection -->
+            <div class="measurement-points-section" id="measurementPointsSection">
+                <h4>Measurement Points</h4>
+                <div class="points-grid">
+                    <div class="foot-section">
+                        <h5>Right Foot</h5>
+                        <div class="points-list">
+                            {% for point in measurement_points.right %}
+                            <label class="point-checkbox">
+                                <input type="checkbox" name="selectedPoints" value="{{ point }}" checked>
+                                <span class="checkmark"></span>
+                                {{ point }}
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <div class="foot-section">
+                        <h5>Left Foot</h5>
+                        <div class="points-list">
+                            {% for point in measurement_points.left %}
+                            <label class="point-checkbox">
+                                <input type="checkbox" name="selectedPoints" value="{{ point }}" checked>
+                                <span class="checkmark"></span>
+                                {{ point }}
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Session Settings -->
+            <div class="settings-section">
+                <h4>Session Settings</h4>
+                <div class="settings-grid">
+                    <label class="setting-item">
+                        <input type="checkbox" name="autoSave" checked>
+                        <span class="checkmark"></span>
+                        <div class="setting-info">
+                            <div class="setting-title">Auto-save measurements</div>
+                            <div class="setting-desc">Automatically save each measurement</div>
+                        </div>
+                    </label>
+                    
+                    <label class="setting-item">
+                        <input type="checkbox" name="realTimeCharts" checked>
+                        <span class="checkmark"></span>
+                        <div class="setting-info">
+                            <div class="setting-title">Real-time charts</div>
+                            <div class="setting-desc">Update charts as measurements are taken</div>
+                        </div>
+                    </label>
+                    
+                    <label class="setting-item">
+                        <input type="checkbox" name="notifications">
+                        <span class="checkmark"></span>
+                        <div class="setting-info">
+                            <div class="setting-title">Alert notifications</div>
+                            <div class="setting-desc">Get alerts for abnormal readings</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div class="form-actions">
+                <button type="button" class="btn btn-outline" onclick="window.history.back()">
+                    <i class="fas fa-times"></i>
+                    Cancel
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-play"></i>
+                    Start Session
+                </button>
+            </div>
+        </form>
+    </div>
+    
+    <!-- Quick Start Templates -->
+    <div class="templates-section">
+        <h3>Quick Start Templates</h3>
+        <div class="templates-grid">
+            <div class="template-card" onclick="loadTemplate('diabetic-screening')">
+                <div class="template-icon">
+                    <i class="fas fa-user-md"></i>
+                </div>
+                <div class="template-info">
+                    <h4>Diabetic Screening</h4>
+                    <p>Standard diabetic foot assessment protocol</p>
+                    <span class="template-points">12 points</span>
+                </div>
+            </div>
+            
+            <div class="template-card" onclick="loadTemplate('quick-check')">
+                <div class="template-icon">
+                    <i class="fas fa-tachometer-alt"></i>
+                </div>
+                <div class="template-info">
+                    <h4>Quick Check</h4>
+                    <p>Basic assessment of key pressure points</p>
+                    <span class="template-points">6 points</span>
+                </div>
+            </div>
+            
+            <div class="template-card" onclick="loadTemplate('research')">
+                <div class="template-icon">
+                    <i class="fas fa-flask"></i>
+                </div>
+                <div class="template-info">
+                    <h4>Research Protocol</h4>
+                    <p>Comprehensive measurement for research</p>
+                    <span class="template-points">All points</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.new-session-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.session-header {
+    text-align: left;
+}
+
+.back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--primary-blue);
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin-bottom: 1rem;
+    transition: var(--transition);
+}
+
+.back-btn:hover {
+    color: var(--secondary-blue);
+}
+
+.header-info h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin-bottom: 0.5rem;
+}
+
+.header-info p {
+    color: var(--gray);
+    font-size: 1rem;
+    margin: 0;
+}
+
+.config-card {
+    background: var(--white);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    border: 1px solid var(--light-gray);
+    overflow: hidden;
+}
+
+.card-header {
+    padding: 2rem;
+    background: linear-gradient(135deg, var(--off-white), rgba(96, 165, 250, 0.05));
+    border-bottom: 1px solid var(--light-gray);
+}
+
+.card-header h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-dark);
+    margin-bottom: 0.5rem;
+}
+
+.card-header p {
+    color: var(--gray);
+    margin: 0;
+}
+
+.session-form {
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.form-group label {
+    font-weight: 600;
+    color: var(--text-dark);
+    font-size: 0.9rem;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    padding: 0.75rem;
+    border: 2px solid var(--light-gray);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    transition: var(--transition);
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--primary-blue);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.form-hint {
+    font-size: 0.75rem;
+    color: var(--gray);
+    margin-top: 0.25rem;
+}
+
+.measurement-points-section {
+    border: 1px solid var(--light-gray);
+    border-radius: 8px;
+    padding: 1.5rem;
+    background: var(--off-white);
+}
+
+.measurement-points-section h4 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-dark);
+    margin-bottom: 1.5rem;
+}
+
+.points-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+}
+
+.foot-section h5 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--primary-blue);
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+.points-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.point-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 6px;
+    transition: var(--transition);
+    font-size: 0.9rem;
+}
+
+.point-checkbox:hover {
+    background: rgba(37, 99, 235, 0.05);
+}
+
+.point-checkbox input[type="checkbox"] {
+    display: none;
+}
+
+.point-checkbox .checkmark {
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--light-gray);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+}
+
+.point-checkbox input[type="checkbox"]:checked + .checkmark {
+    background: var(--primary-blue);
+    border-color: var(--primary-blue);
+}
+
+.point-checkbox input[type="checkbox"]:checked + .checkmark::after {
+    content: '✓';
+    color: var(--white);
+    font-size: 0.75rem;
+    font-weight: bold;
+}
+
+.settings-section {
+    border: 1px solid var(--light-gray);
+    border-radius: 8px;
+    padding: 1.5rem;
+    background: var(--off-white);
+}
+
+.settings-section h4 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-dark);
+    margin-bottom: 1.5rem;
+}
+
+.settings-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.setting-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    cursor: pointer;
+    padding: 1rem;
+    background: var(--white);
+    border: 1px solid var(--light-gray);
+    border-radius: 8px;
+    transition: var(--transition);
+}
+
+.setting-item:hover {
+    border-color: var(--primary-blue);
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+}
+
+.setting-item input[type="checkbox"] {
+    display: none;
+}
+
+.setting-item .checkmark {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--light-gray);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+    flex-shrink: 0;
+}
+
+.setting-item input[type="checkbox"]:checked + .checkmark {
+    background: var(--primary-blue);
+    border-color: var(--primary-blue);
+}
+
+.setting-item input[type="checkbox"]:checked + .checkmark::after {
+    content: '✓';
+    color: var(--white);
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+.setting-info {
+    flex: 1;
+}
+
+.setting-title {
+    font-weight: 600;
+    color: var(--text-dark);
+    font-size: 0.9rem;
+}
+
+.setting-desc {
+    color: var(--gray);
+    font-size: 0.8rem;
+    margin-top: 0.25rem;
+}
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    padding-top: 1rem;
+    border-top: 1px solid var(--light-gray);
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: var(--transition);
+    border: none;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary-blue), var(--secondary-blue));
+    color: var(--white);
+    box-shadow: var(--shadow);
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-lg);
+}
+
+.btn-outline {
+    background: transparent;
+    color: var(--gray);
+    border: 2px solid var(--light-gray);
+}
+
+.btn-outline:hover {
+    background: var(--off-white);
+    border-color: var(--primary-blue);
+    color: var(--primary-blue);
+}
+
+.templates-section {
+    margin-top: 1rem;
+}
+
+.templates-section h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-dark);
+    margin-bottom: 1.5rem;
+}
+
+.templates-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+}
+
+.template-card {
+    background: var(--white);
+    border: 2px solid var(--light-gray);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.template-card:hover {
+    border-color: var(--primary-blue);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.template-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--primary-blue), var(--secondary-blue));
+    color: var(--white);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.template-info {
+    flex: 1;
+}
+
+.template-info h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-dark);
+    margin-bottom: 0.25rem;
+}
+
+.template-info p {
+    color: var(--gray);
+    font-size: 0.8rem;
+    margin-bottom: 0.5rem;
+}
+
+.template-points {
+    background: var(--off-white);
+    color: var(--primary-blue);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+@media (max-width: 768px) {
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .points-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .templates-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .template-card {
+        flex-direction: column;
+        text-align: center;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    setupSessionTypeChange();
+    setupFormSubmission();
+});
+
+function setupSessionTypeChange() {
+    const sessionType = document.getElementById('sessionType');
+    const pointsSection = document.getElementById('measurementPointsSection');
+    const checkboxes = document.querySelectorAll('input[name="selectedPoints"]');
+    
+    sessionType.addEventListener('change', function() {
+        const type = this.value;
+        
+        checkboxes.forEach(checkbox => {
+            const pointName = checkbox.value;
+            
+            switch(type) {
+                case 'full':
+                    checkbox.checked = true;
+                    checkbox.disabled = false;
+                    break;
+                case 'right':
+                    checkbox.checked = pointName.includes('Right');
+                    checkbox.disabled = !pointName.includes('Right');
+                    break;
+                case 'left':
+                    checkbox.checked = pointName.includes('Left');
+                    checkbox.disabled = !pointName.includes('Left');
+                    break;
+                case 'custom':
+                    checkbox.disabled = false;
+                    break;
+            }
+        });
+        
+        pointsSection.style.display = type === 'custom' ? 'block' : 'block';
+    });
+}
+
+function setupFormSubmission() {
+    const form = document.getElementById('newSessionForm');
+    
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(form);
+        const selectedPoints = Array.from(document.querySelectorAll('input[name="selectedPoints"]:checked'))
+                                   .map(cb => cb.value);
+        
+        if (selectedPoints.length === 0) {
+            alert('Please select at least one measurement point.');
+            return;
+        }
+        
+        const sessionData = {
+            sessionName: formData.get('sessionName'),
+            sessionType: formData.get('sessionType'),
+            sessionNotes: formData.get('sessionNotes'),
+            selectedPoints: selectedPoints,
+            settings: {
+                autoSave: formData.has('autoSave'),
+                realTimeCharts: formData.has('realTimeCharts'),
+                notifications: formData.has('notifications')
+            }
+        };
+        
+        createSession(sessionData);
+    });
+}
+
+function createSession(sessionData) {
+    // Show loading state
+    const submitBtn = document.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating Session...';
+    submitBtn.disabled = true;
+    
+    fetch('/api/sessions/create', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(sessionData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Redirect to the new session
+            window.location.href = `/my-data?session=${data.session_id}`;
+        } else {
+            alert('Error creating session: ' + data.message);
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+        }
+    })
+    .catch(error => {
+        alert('Error creating session: ' + error.message);
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    });
+}
+
+function loadTemplate(templateType) {
+    const sessionType = document.getElementById('sessionType');
+    const sessionName = document.getElementById('sessionName');
+    const checkboxes = document.querySelectorAll('input[name="selectedPoints"]');
+    
+    switch(templateType) {
+        case 'diabetic-screening':
+            sessionName.value = `Diabetic Screening - ${new Date().toLocaleDateString()}`;
+            sessionType.value = 'full';
+            checkboxes.forEach(cb => cb.checked = true);
+            break;
+            
+        case 'quick-check':
+            sessionName.value = `Quick Check - ${new Date().toLocaleDateString()}`;
+            sessionType.value = 'custom';
+            checkboxes.forEach(cb => {
+                const isKeyPoint = cb.value.includes('Heel') || 
+                                 cb.value.includes('Big Toe') || 
+                                 cb.value.includes('1st MT');
+                cb.checked = isKeyPoint;
+            });
+            break;
+            
+        case 'research':
+            sessionName.value = `Research Protocol - ${new Date().toLocaleDateString()}`;
+            sessionType.value = 'full';
+            checkboxes.forEach(cb => cb.checked = true);
+            // Enable all research settings
+            document.querySelectorAll('.setting-item input[type="checkbox"]').forEach(cb => cb.checked = true);
+            break;
+    }
+    
+    // Trigger change event to update UI
+    sessionType.dispatchEvent(new Event('change'));
+}
+</script>
+{% endblock %}

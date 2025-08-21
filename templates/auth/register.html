@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - LIWANAG</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-card register-card">
+            <div class="auth-header">
+                <div class="logo">
+                    <h1>LIWANAG</h1>
+                    <p>Healthcare Dashboard</p>
+                </div>
+            </div>
+            
+            <div class="auth-form">
+                <h2>Create Account</h2>
+                <p class="auth-subtitle">Join LIWANAG to track your health data.</p>
+                
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }}">
+                                <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-triangle' if category == 'warning' else 'times-circle' if category == 'danger' else 'info-circle' }}"></i>
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+                
+                <form method="POST" class="form">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            {{ form.first_name.label(class="form-label") }}
+                            {{ form.first_name(class="form-input" + (" error" if form.first_name.errors else "")) }}
+                            {% if form.first_name.errors %}
+                                <div class="error-message">
+                                    {% for error in form.first_name.errors %}
+                                        <span>{{ error }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="form-group">
+                            {{ form.surname.label(class="form-label") }}
+                            {{ form.surname(class="form-input" + (" error" if form.surname.errors else "")) }}
+                            {% if form.surname.errors %}
+                                <div class="error-message">
+                                    {% for error in form.surname.errors %}
+                                        <span>{{ error }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        {{ form.middle_initial.label(class="form-label") }}
+                        {{ form.middle_initial(class="form-input" + (" error" if form.middle_initial.errors else ""), maxlength="1") }}
+                        {% if form.middle_initial.errors %}
+                            <div class="error-message">
+                                {% for error in form.middle_initial.errors %}
+                                    <span>{{ error }}</span>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="form-group">
+                        {{ form.hospital_name.label(class="form-label") }}
+                        {{ form.hospital_name(class="form-input" + (" error" if form.hospital_name.errors else "")) }}
+                        {% if form.hospital_name.errors %}
+                            <div class="error-message">
+                                {% for error in form.hospital_name.errors %}
+                                    <span>{{ error }}</span>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="form-group">
+                        {{ form.hospital_room_no.label(class="form-label") }}
+                        {{ form.hospital_room_no(class="form-input" + (" error" if form.hospital_room_no.errors else "")) }}
+                        {% if form.hospital_room_no.errors %}
+                            <div class="error-message">
+                                {% for error in form.hospital_room_no.errors %}
+                                    <span>{{ error }}</span>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="form-group">
+                        {{ form.username.label(class="form-label") }}
+                        {{ form.username(class="form-input" + (" error" if form.username.errors else "")) }}
+                        <small class="form-help">Username must be unique and contain only letters, numbers, underscores, dots, and hyphens.</small>
+                        {% if form.username.errors %}
+                            <div class="error-message">
+                                {% for error in form.username.errors %}
+                                    <span>{{ error }}</span>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="form-group">
+                        {{ form.password.label(class="form-label") }}
+                        <div class="password-input">
+                            {{ form.password(class="form-input" + (" error" if form.password.errors else "")) }}
+                            <button type="button" class="password-toggle" onclick="togglePassword('password')">
+                                <i class="fas fa-eye" id="password-icon"></i>
+                            </button>
+                        </div>
+                        <div class="password-requirements">
+                            <small>Password must contain:</small>
+                            <ul>
+                                <li>At least 8 characters</li>
+                                <li>One uppercase letter</li>
+                                <li>One lowercase letter</li>
+                                <li>One number</li>
+                                <li>One special character</li>
+                            </ul>
+                        </div>
+                        {% if form.password.errors %}
+                            <div class="error-message">
+                                {% for error in form.password.errors %}
+                                    <span>{{ error }}</span>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="form-group">
+                        {{ form.confirm_password.label(class="form-label") }}
+                        <div class="password-input">
+                            {{ form.confirm_password(class="form-input" + (" error" if form.confirm_password.errors else "")) }}
+                            <button type="button" class="password-toggle" onclick="togglePassword('confirm_password')">
+                                <i class="fas fa-eye" id="confirm-password-icon"></i>
+                            </button>
+                        </div>
+                        {% if form.confirm_password.errors %}
+                            <div class="error-message">
+                                {% for error in form.confirm_password.errors %}
+                                    <span>{{ error }}</span>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    {{ form.submit(class="btn btn-primary btn-full") }}
+                </form>
+                
+                <div class="auth-footer">
+                    <p>Already have an account? <a href="{{ url_for('login') }}" class="auth-link">Sign In</a></p>
+                    <p><a href="{{ url_for('home') }}" class="auth-link">← Back to Home</a></p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="auth-background">
+            <div class="auth-pattern"></div>
+        </div>
+    </div>
+    
+    <script>
+        function togglePassword(fieldName) {
+            const passwordInput = document.getElementById(fieldName);
+            const passwordIcon = document.getElementById(fieldName === 'password' ? 'password-icon' : 'confirm-password-icon');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                passwordIcon.classList.remove('fa-eye');
+                passwordIcon.classList.add('fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                passwordIcon.classList.remove('fa-eye-slash');
+                passwordIcon.classList.add('fa-eye');
+            }
+        }
+        
+        // Real-time password validation
+        document.getElementById('password').addEventListener('input', function(e) {
+            const password = e.target.value;
+            const requirements = document.querySelector('.password-requirements ul');
+            const items = requirements.querySelectorAll('li');
+            
+            // Check length
+            items[0].classList.toggle('valid', password.length >= 8);
+            
+            // Check uppercase
+            items[1].classList.toggle('valid', /[A-Z]/.test(password));
+            
+            // Check lowercase
+            items[2].classList.toggle('valid', /[a-z]/.test(password));
+            
+            // Check number
+            items[3].classList.toggle('valid', /\d/.test(password));
+            
+            // Check special character
+            items[4].classList.toggle('valid', /[!@#$%^&*(),.?":{}|<>]/.test(password));
+        });
+        
+        // Auto-dismiss alerts after 5 seconds
+        setTimeout(function() {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(alert => {
+                alert.style.opacity = '0';
+                alert.style.transform = 'translateY(-20px)';
+                setTimeout(() => alert.remove(), 300);
+            });
+        }, 5000);
+    </script>
+</body>
+</html>

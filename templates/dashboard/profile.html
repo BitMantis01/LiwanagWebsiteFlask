@@ -1,0 +1,491 @@
+{% extends "dashboard/base.html" %}
+
+{% block page_title %}User Profile{% endblock %}
+
+{% block content %}
+<div class="profile-content">
+    <div class="profile-grid">
+        <!-- Profile Card -->
+        <div class="profile-card">
+            <div class="profile-header">
+                <div class="profile-avatar">
+                    <img src="{{ url_for('avatar', username=current_user.username) }}" alt="Profile Picture" id="profile-picture">
+                    <div class="avatar-overlay">
+                        <i class="fas fa-camera"></i>
+                    </div>
+                </div>
+                <div class="profile-info">
+                    <h2>{{ current_user.full_name }}</h2>
+                    <p class="profile-username">@{{ current_user.username }}</p>
+                    <p class="profile-hospital">{{ current_user.hospital_name }}</p>
+                    <span class="profile-badge">
+                        <i class="fas fa-user-md"></i>
+                        Healthcare Professional
+                    </span>
+                </div>
+            </div>
+            
+            <div class="profile-stats">
+                <div class="stat-item">
+                    <div class="stat-value">{{ current_user.sessions|length }}</div>
+                    <div class="stat-label">Total Sessions</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">{{ days_active or 0 }}</div>
+                    <div class="stat-label">Days Active</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">
+                        {% if current_user.last_login %}
+                            {{ convert_timezone(current_user.last_login).strftime('%m/%d') }}
+                        {% else %}
+                            Today
+                        {% endif %}
+                    </div>
+                    <div class="stat-label">Last Login</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Profile Form -->
+        <div class="profile-form-card">
+            <div class="card-header">
+                <h3>Profile Information</h3>
+                <p>Update your account details and preferences</p>
+            </div>
+            
+            <form method="POST" class="profile-form">
+                {{ form.hidden_tag() }}
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        {{ form.first_name.label(class="form-label") }}
+                        {{ form.first_name(class="form-input" + (" error" if form.first_name.errors else "")) }}
+                        {% if form.first_name.errors %}
+                            <div class="error-message">
+                                {% for error in form.first_name.errors %}
+                                    <span>{{ error }}</span>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="form-group">
+                        {{ form.surname.label(class="form-label") }}
+                        {{ form.surname(class="form-input" + (" error" if form.surname.errors else "")) }}
+                        {% if form.surname.errors %}
+                            <div class="error-message">
+                                {% for error in form.surname.errors %}
+                                    <span>{{ error }}</span>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    {{ form.middle_initial.label(class="form-label") }}
+                    {{ form.middle_initial(class="form-input" + (" error" if form.middle_initial.errors else ""), maxlength="1") }}
+                    <small class="form-help">Optional middle initial</small>
+                    {% if form.middle_initial.errors %}
+                        <div class="error-message">
+                            {% for error in form.middle_initial.errors %}
+                                <span>{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <div class="form-group">
+                    {{ form.hospital_name.label(class="form-label") }}
+                    {{ form.hospital_name(class="form-input" + (" error" if form.hospital_name.errors else "")) }}
+                    {% if form.hospital_name.errors %}
+                        <div class="error-message">
+                            {% for error in form.hospital_name.errors %}
+                                <span>{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <div class="form-group">
+                    {{ form.hospital_room_no.label(class="form-label") }}
+                    {{ form.hospital_room_no(class="form-input" + (" error" if form.hospital_room_no.errors else "")) }}
+                    {% if form.hospital_room_no.errors %}
+                        <div class="error-message">
+                            {% for error in form.hospital_room_no.errors %}
+                                <span>{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <div class="form-actions">
+                    {{ form.submit(class="btn btn-primary") }}
+                    <a href="{{ url_for('change_password') }}" class="btn btn-outline">
+                        <i class="fas fa-key"></i>
+                        Change Password
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Account Information -->
+    <div class="account-info-card">
+        <div class="card-header">
+            <h3>Account Information</h3>
+            <p>View your account details and security information</p>
+        </div>
+        
+        <div class="info-grid">
+            <div class="info-item">
+                <div class="info-label">Username</div>
+                <div class="info-value">{{ current_user.username }}</div>
+            </div>
+            
+            <div class="info-item">
+                <div class="info-label">Account Created</div>
+                <div class="info-value">
+                    {{ convert_timezone(current_user.created_at).strftime('%B %d, %Y') }}
+                </div>
+            </div>
+            
+            <div class="info-item">
+                <div class="info-label">Last Login</div>
+                <div class="info-value">
+                    {% if current_user.last_login %}
+                        {{ convert_timezone(current_user.last_login).strftime('%B %d, %Y at %I:%M %p') }}
+                    {% else %}
+                        Never
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="info-item">
+                <div class="info-label">Account Status</div>
+                <div class="info-value">
+                    <span class="status-badge status-active">Active</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.profile-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.profile-grid {
+    display: grid;
+    grid-template-columns: 350px 1fr;
+    gap: 2rem;
+}
+
+.profile-card,
+.profile-form-card,
+.account-info-card {
+    background: var(--white);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    border: 1px solid var(--light-gray);
+    overflow: hidden;
+}
+
+.profile-header {
+    padding: 2rem;
+    text-align: center;
+    background: linear-gradient(135deg, var(--off-white), rgba(96, 165, 250, 0.05));
+}
+
+.profile-avatar {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    margin: 0 auto 1.5rem;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 4px solid var(--white);
+    box-shadow: var(--shadow-lg);
+}
+
+.profile-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.avatar-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--white);
+    opacity: 0;
+    transition: var(--transition);
+    cursor: pointer;
+}
+
+.profile-avatar:hover .avatar-overlay {
+    opacity: 1;
+}
+
+.profile-info h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-dark);
+    margin-bottom: 0.5rem;
+}
+
+.profile-username {
+    color: var(--gray);
+    font-size: 0.9rem;
+    margin-bottom: 0.25rem;
+}
+
+.profile-hospital {
+    color: var(--gray);
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+}
+
+.profile-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: linear-gradient(135deg, var(--primary-blue), var(--light-blue));
+    color: var(--white);
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.profile-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    border-top: 1px solid var(--light-gray);
+}
+
+.stat-item {
+    padding: 1.5rem 1rem;
+    text-align: center;
+    border-right: 1px solid var(--light-gray);
+}
+
+.stat-item:last-child {
+    border-right: none;
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary-blue);
+    margin-bottom: 0.25rem;
+}
+
+.stat-label {
+    font-size: 0.8rem;
+    color: var(--gray);
+    font-weight: 500;
+}
+
+.card-header {
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid var(--light-gray);
+}
+
+.card-header h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-dark);
+    margin-bottom: 0.5rem;
+}
+
+.card-header p {
+    color: var(--gray);
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+.profile-form {
+    padding: 2rem;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    color: var(--text-dark);
+    font-size: 0.875rem;
+}
+
+.form-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    transition: var(--transition);
+    background: var(--white);
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: var(--primary-blue);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.form-input.error {
+    border-color: var(--danger);
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+.form-help {
+    font-size: 0.75rem;
+    color: var(--gray);
+    margin-top: 0.25rem;
+    display: block;
+}
+
+.error-message {
+    margin-top: 0.5rem;
+    color: var(--danger);
+    font-size: 0.75rem;
+}
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--light-gray);
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.9rem;
+    transition: var(--transition);
+    border: none;
+    cursor: pointer;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary-blue), var(--secondary-blue));
+    color: var(--white);
+    box-shadow: var(--shadow);
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.btn-outline {
+    background: transparent;
+    color: var(--primary-blue);
+    border: 2px solid var(--primary-blue);
+}
+
+.btn-outline:hover {
+    background: var(--primary-blue);
+    color: var(--white);
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+    padding: 2rem;
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.info-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--gray);
+}
+
+.info-value {
+    font-size: 0.95rem;
+    color: var(--text-dark);
+    font-weight: 500;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-active {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success);
+}
+
+@media (max-width: 768px) {
+    .profile-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .info-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .profile-stats {
+        grid-template-columns: 1fr;
+    }
+    
+    .stat-item {
+        border-right: none;
+        border-bottom: 1px solid var(--light-gray);
+    }
+    
+    .stat-item:last-child {
+        border-bottom: none;
+    }
+}
+</style>
+{% endblock %}

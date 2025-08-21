@@ -1,0 +1,120 @@
+{% extends "dashboard/base.html" %}
+
+{% block content %}
+<div class="dashboard-content">
+    <!-- Stats Cards -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-chart-line"></i>
+            </div>
+            <div class="stat-info">
+                <div class="stat-number">{{ total_sessions }}</div>
+                <div class="stat-label">Total Sessions</div>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-database"></i>
+            </div>
+            <div class="stat-info">
+                <div class="stat-number">{{ total_measurements }}</div>
+                <div class="stat-label">Measurements</div>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-heartbeat"></i>
+            </div>
+            <div class="stat-info">
+                <div class="stat-number">Normal</div>
+                <div class="stat-label">Health Status</div>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-clock"></i>
+            </div>
+            <div class="stat-info">
+                <div class="stat-number">
+                    {% if current_user.last_login %}
+                        {{ convert_timezone(current_user.last_login).strftime('%m/%d') }}
+                    {% else %}
+                        Today
+                    {% endif %}
+                </div>
+                <div class="stat-label">Last Login</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Sessions -->
+    <div class="dashboard-section">
+        <div class="section-header">
+            <h2>Recent Sessions</h2>
+            <a href="{{ url_for('history') }}" class="btn btn-outline">View All</a>
+        </div>
+        
+        <div class="sessions-list">
+            {% if recent_sessions %}
+                {% for session in recent_sessions %}
+                    <div class="session-item">
+                        <div class="session-info">
+                            <h3>{{ session.session_name }}</h3>
+                            <p class="session-date">
+                                {{ convert_timezone(session.created_at).strftime('%B %d, %Y at %I:%M %p') }}
+                            </p>
+                            <span class="session-status status-{{ session.status }}">{{ session.status.title() }}</span>
+                        </div>
+                        <div class="session-actions">
+                            <a href="{{ url_for('view_session', session_id=session.id) }}" class="btn btn-sm">View</a>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-chart-line"></i>
+                    <h3>No Sessions Yet</h3>
+                    <p>Your measurement sessions will appear here once the LIWANAG device starts collecting data.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Quick Actions -->
+    <div class="dashboard-section">
+        <div class="section-header">
+            <h2>Quick Actions</h2>
+        </div>
+        
+        <div class="actions-grid">
+            <a href="{{ url_for('my_data') }}" class="action-card">
+                <div class="action-icon">
+                    <i class="fas fa-chart-bar"></i>
+                </div>
+                <h3>View My Data</h3>
+                <p>See your latest measurements and analysis</p>
+            </a>
+            
+            <a href="{{ url_for('history') }}" class="action-card">
+                <div class="action-icon">
+                    <i class="fas fa-history"></i>
+                </div>
+                <h3>Session History</h3>
+                <p>Browse through all your past sessions</p>
+            </a>
+            
+            <a href="{{ url_for('profile') }}" class="action-card">
+                <div class="action-icon">
+                    <i class="fas fa-user-cog"></i>
+                </div>
+                <h3>Update Profile</h3>
+                <p>Manage your account settings</p>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

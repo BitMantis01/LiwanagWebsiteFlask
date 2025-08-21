@@ -1,0 +1,2351 @@
+{% extends "dashboard/base.html" %}
+
+{% block page_title %}My Data{% endblock %}
+
+{% block content %}
+<div class="data-content">
+    <!-- Summary Cards -->
+    <div class="summary-cards">
+        <div class="summary-card">
+            <div class="card-icon">
+                <i class="fas fa-heartbeat"></i>
+            </div>
+            <div class="card-content">
+                <h3>VPT Measurements</h3>
+                <div class="card-value">{{ vpt_count or 0 }}</div>
+                <div class="card-label">Total Readings</div>
+            </div>
+        </div>
+        
+        <div class="summary-card">
+            <div class="card-icon">
+                <i class="fas fa-thermometer-half"></i>
+            </div>
+            <div class="card-content">
+                <h3>Temperature</h3>
+                <div class="card-value">{{ temp_count or 0 }}</div>
+                <div class="card-label">Total Readings</div>
+            </div>
+        </div>
+        
+        <div class="summary-card">
+            <div class="card-icon">
+                <i class="fas fa-lungs"></i>
+            </div>
+            <div class="card-content">
+                <h3>SpO2 Levels</h3>
+                <div class="card-value">{{ spo2_count or 0 }}</div>
+                <div class="card-label">Total Readings</div>
+            </div>
+        </div>
+        
+        <div class="summary-card">
+            <div class="card-icon">
+                <i class="fas fa-clock"></i>
+            </div>
+            <div class="card-content">
+                <h3>Last Reading</h3>
+                <div class="card-value">
+                    {% if last_measurement %}
+                        {{ convert_timezone(last_measurement.timestamp).strftime('%m/%d') }}
+                    {% else %}
+                        --
+                    {% endif %}
+                </div>
+                <div class="card-label">
+                    {% if last_measurement %}
+                        {{ convert_timezone(last_measurement.timestamp).strftime('%I:%M %p') }}
+                    {% else %}
+                        No data
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Data Visualization -->
+    <div class="data-visualization">
+        <div class="chart-container">
+            <div class="chart-header">
+                <h3>Right Foot VPT Measurements</h3>
+                <div class="chart-controls">
+                    <select id="timeRange" class="form-select">
+                        <option value="7">Last 7 days</option>
+                        <option value="30" selected>Last 30 days</option>
+                        <option value="90">Last 3 months</option>
+                        <option value="365">Last year</option>
+                    </select>
+                </div>
+            </div>
+            <div class="chart-content">
+                <canvas id="rightFootChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+        
+        <div class="chart-container">
+            <div class="chart-header">
+                <h3>Left Foot VPT Measurements</h3>
+                <div class="chart-controls">
+                    <select id="leftTimeRange" class="form-select">
+                        <option value="7">Last 7 days</option>
+                        <option value="30" selected>Last 30 days</option>
+                        <option value="90">Last 3 months</option>
+                        <option value="365">Last year</option>
+                    </select>
+                </div>
+            </div>
+            <div class="chart-content">
+                <canvas id="leftFootChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+        
+        <div class="chart-container chart-full-width">
+            <div class="chart-header">
+                <h3>Right Foot Temperature & SpO2</h3>
+                <div class="chart-controls">
+                    <button class="chart-toggle active" data-chart="temp" data-foot="right">Temperature</button>
+                    <button class="chart-toggle" data-chart="spo2" data-foot="right">SpO2</button>
+                    <button class="chart-toggle" data-chart="both" data-foot="right">Both</button>
+                </div>
+            </div>
+            <div class="chart-content">
+                <canvas id="rightVitalsChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+        
+        <div class="chart-container chart-full-width">
+            <div class="chart-header">
+                <h3>Left Foot Temperature & SpO2</h3>
+                <div class="chart-controls">
+                    <button class="chart-toggle active" data-chart="temp" data-foot="left">Temperature</button>
+                    <button class="chart-toggle" data-chart="spo2" data-foot="left">SpO2</button>
+                    <button class="chart-toggle" data-chart="both" data-foot="left">Both</button>
+                </div>
+            </div>
+            <div class="chart-content">
+                <canvas id="leftVitalsChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- VPT Tables by Foot -->
+    <div class="vpt-tables-section">
+        <div class="section-header">
+            <h3>Current VPT Readings</h3>
+            <p>Latest vibration perception threshold measurements for each foot</p>
+        </div>
+        
+        <div class="foot-tables-grid">
+            <!-- Right Foot Table -->
+            <div class="foot-table-container">
+                <div class="foot-table-header">
+                    <h4><i class="fas fa-foot"></i> Right Foot</h4>
+                    <div class="foot-status">
+                        <span class="status-indicator status-normal">Normal Range</span>
+                    </div>
+                </div>
+                
+                <div class="vpt-table-wrapper">
+                    <table class="vpt-table">
+                        <thead>
+                            <tr>
+                                <th>Point</th>
+                                <th>Threshold</th>
+                                <th>Current (V)</th>
+                                <th>Status</th>
+                                <th>Last Reading</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr data-point="right_heel">
+                                <td class="point-cell">
+                                    <div class="point-info">
+                                        <strong>Right Heel</strong>
+                                        <span class="point-number">Point 1</span>
+                                    </div>
+                                </td>
+                                <td class="threshold-cell">5V</td>
+                                <td class="value-cell">
+                                    <span class="measurement-value" id="right_heel_value">--</span>
+                                </td>
+                                <td class="status-cell">
+                                    <span class="measurement-status" id="right_heel_status">No Data</span>
+                                </td>
+                                <td class="time-cell" id="right_heel_time">--</td>
+                            </tr>
+                            <tr data-point="right_instep">
+                                <td class="point-cell">
+                                    <div class="point-info">
+                                        <strong>Right In Step</strong>
+                                        <span class="point-number">Point 2</span>
+                                    </div>
+                                </td>
+                                <td class="threshold-cell">5V</td>
+                                <td class="value-cell">
+                                    <span class="measurement-value" id="right_instep_value">--</span>
+                                </td>
+                                <td class="status-cell">
+                                    <span class="measurement-status" id="right_instep_status">No Data</span>
+                                </td>
+                                <td class="time-cell" id="right_instep_time">--</td>
+                            </tr>
+                            <tr data-point="right_5th_mt">
+                                <td class="point-cell">
+                                    <div class="point-info">
+                                        <strong>Right 5th MT</strong>
+                                        <span class="point-number">Point 3</span>
+                                    </div>
+                                </td>
+                                <td class="threshold-cell">10V</td>
+                                <td class="value-cell">
+                                    <span class="measurement-value" id="right_5th_mt_value">--</span>
+                                </td>
+                                <td class="status-cell">
+                                    <span class="measurement-status" id="right_5th_mt_status">No Data</span>
+                                </td>
+                                <td class="time-cell" id="right_5th_mt_time">--</td>
+                            </tr>
+                            <tr data-point="right_3rd_mt">
+                                <td class="point-cell">
+                                    <div class="point-info">
+                                        <strong>Right 3rd MT</strong>
+                                        <span class="point-number">Point 4</span>
+                                    </div>
+                                </td>
+                                <td class="threshold-cell">5V</td>
+                                <td class="value-cell">
+                                    <span class="measurement-value" id="right_3rd_mt_value">--</span>
+                                </td>
+                                <td class="status-cell">
+                                    <span class="measurement-status" id="right_3rd_mt_status">No Data</span>
+                                </td>
+                                <td class="time-cell" id="right_3rd_mt_time">--</td>
+                            </tr>
+                            <tr data-point="right_1st_mt">
+                                <td class="point-cell">
+                                    <div class="point-info">
+                                        <strong>Right 1st MT</strong>
+                                        <span class="point-number">Point 5</span>
+                                    </div>
+                                </td>
+                                <td class="threshold-cell">10V</td>
+                                <td class="value-cell">
+                                    <span class="measurement-value" id="right_1st_mt_value">--</span>
+                                </td>
+                                <td class="status-cell">
+                                    <span class="measurement-status" id="right_1st_mt_status">No Data</span>
+                                </td>
+                                <td class="time-cell" id="right_1st_mt_time">--</td>
+                            </tr>
+                            <tr data-point="right_big_toe">
+                                <td class="point-cell">
+                                    <div class="point-info">
+                                        <strong>Right Big Toe</strong>
+                                        <span class="point-number">Point 6</span>
+                                    </div>
+                                </td>
+                                <td class="threshold-cell">5V</td>
+                                <td class="value-cell">
+                                    <span class="measurement-value" id="right_big_toe_value">--</span>
+                                </td>
+                                <td class="status-cell">
+                                    <span class="measurement-status" id="right_big_toe_status">No Data</span>
+                                </td>
+                                <td class="time-cell" id="right_big_toe_time">--</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Left Foot Table -->
+            <div class="foot-table-container">
+                <div class="foot-table-header">
+                    <h4><i class="fas fa-foot"></i> Left Foot</h4>
+                    <div class="foot-status">
+                        <span class="status-indicator status-normal">Normal Range</span>
+                    </div>
+                </div>
+                
+                <div class="vpt-table-wrapper">
+                    <table class="vpt-table">
+                        <thead>
+                            <tr>
+                                <th>Point</th>
+                                <th>Threshold</th>
+                                <th>Current (V)</th>
+                                <th>Status</th>
+                                <th>Last Reading</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr data-point="left_heel">
+                                <td class="point-cell">
+                                    <div class="point-info">
+                                        <strong>Left Heel</strong>
+                                        <span class="point-number">Point 1</span>
+                                    </div>
+                                </td>
+                                <td class="threshold-cell">5V</td>
+                                <td class="value-cell">
+                                    <span class="measurement-value" id="left_heel_value">--</span>
+                                </td>
+                                <td class="status-cell">
+                                    <span class="measurement-status" id="left_heel_status">No Data</span>
+                                </td>
+                                <td class="time-cell" id="left_heel_time">--</td>
+                            </tr>
+                            <tr data-point="left_instep">
+                                <td class="point-cell">
+                                    <div class="point-info">
+                                        <strong>Left In Step</strong>
+                                        <span class="point-number">Point 2</span>
+                                    </div>
+                                </td>
+                                <td class="threshold-cell">5V</td>
+                                <td class="value-cell">
+                                    <span class="measurement-value" id="left_instep_value">--</span>
+                                </td>
+                                <td class="status-cell">
+                                    <span class="measurement-status" id="left_instep_status">No Data</span>
+                                </td>
+                                <td class="time-cell" id="left_instep_time">--</td>
+                            </tr>
+                            <tr data-point="left_5th_mt">
+                                <td class="point-cell">
+                                    <div class="point-info">
+                                        <strong>Left 5th MT</strong>
+                                        <span class="point-number">Point 3</span>
+                                    </div>
+                                </td>
+                                <td class="threshold-cell">10V</td>
+                                <td class="value-cell">
+                                    <span class="measurement-value" id="left_5th_mt_value">--</span>
+                                </td>
+                                <td class="status-cell">
+                                    <span class="measurement-status" id="left_5th_mt_status">No Data</span>
+                                </td>
+                                <td class="time-cell" id="left_5th_mt_time">--</td>
+                            </tr>
+                            <tr data-point="left_3rd_mt">
+                                <td class="point-cell">
+                                    <div class="point-info">
+                                        <strong>Left 3rd MT</strong>
+                                        <span class="point-number">Point 4</span>
+                                    </div>
+                                </td>
+                                <td class="threshold-cell">5V</td>
+                                <td class="value-cell">
+                                    <span class="measurement-value" id="left_3rd_mt_value">--</span>
+                                </td>
+                                <td class="status-cell">
+                                    <span class="measurement-status" id="left_3rd_mt_status">No Data</span>
+                                </td>
+                                <td class="time-cell" id="left_3rd_mt_time">--</td>
+                            </tr>
+                            <tr data-point="left_1st_mt">
+                                <td class="point-cell">
+                                    <div class="point-info">
+                                        <strong>Left 1st MT</strong>
+                                        <span class="point-number">Point 5</span>
+                                    </div>
+                                </td>
+                                <td class="threshold-cell">10V</td>
+                                <td class="value-cell">
+                                    <span class="measurement-value" id="left_1st_mt_value">--</span>
+                                </td>
+                                <td class="status-cell">
+                                    <span class="measurement-status" id="left_1st_mt_status">No Data</span>
+                                </td>
+                                <td class="time-cell" id="left_1st_mt_time">--</td>
+                            </tr>
+                            <tr data-point="left_big_toe">
+                                <td class="point-cell">
+                                    <div class="point-info">
+                                        <strong>Left Big Toe</strong>
+                                        <span class="point-number">Point 6</span>
+                                    </div>
+                                </td>
+                                <td class="threshold-cell">5V</td>
+                                <td class="value-cell">
+                                    <span class="measurement-value" id="left_big_toe_value">--</span>
+                                </td>
+                                <td class="status-cell">
+                                    <span class="measurement-status" id="left_big_toe_status">No Data</span>
+                                </td>
+                                <td class="time-cell" id="left_big_toe_time">--</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Temperature & SpO2 Tables by Foot -->
+    <div class="vitals-tables-section">
+        <div class="section-header">
+            <h3>Current Temperature & SpO2 Readings</h3>
+            <p>Latest temperature and oxygen saturation measurements for each measurement point</p>
+        </div>
+        
+        <div class="foot-tables-grid">
+            <!-- Right Foot Vitals Table -->
+            <div class="foot-table-container">
+                <div class="foot-table-header">
+                    <h4><i class="fas fa-thermometer-half"></i> Right Foot Vitals</h4>
+                    <div class="foot-status">
+                        <span class="status-indicator status-normal">Normal Range</span>
+                    </div>
+                </div>
+                
+                <div class="vitals-table-wrapper">
+                    <table class="vitals-table">
+                        <thead>
+                            <tr>
+                                <th>Point</th>
+                                <th>Temperature (°C)</th>
+                                <th>SpO2 (%)</th>
+                                <th>Status</th>
+                                <th>Last Reading</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr data-point="right_heel">
+                                <td class="point-cell">
+                                    <div class="point-info">
+                                        <strong>Right Heel</strong>
+                                        <span class="point-number">Point 1</span>
+                                    </div>
+                                </td>
+                                <td class="temp-cell">
+                                    <span class="temp-value" id="right_heel_temp">--</span>
+                                </td>
+                                <td class="spo2-cell">
+                                    <span class="spo2-value" id="right_heel_spo2">--</span>
+                                </td>
+                                <td class="status-cell">
+                                    <span class="vitals-status" id="right_heel_vitals_status">No Data</span>
+                                </td>
+                                <td class="time-cell" id="right_heel_vitals_time">--</td>
+                            </tr>
+                            <tr data-point="right_instep">
+                                <td class="point-cell">
+                                    <div class="point-info">
+                                        <strong>Right In Step</strong>
+                                        <span class="point-number">Point 2</span>
+                                    </div>
+                                </td>
+                                <td class="temp-cell">
+                                    <span class="temp-value" id="right_instep_temp">--</span>
+                                </td>
+                                <td class="spo2-cell">
+                                    <span class="spo2-value" id="right_instep_spo2">--</span>
+                                </td>
+                                <td class="status-cell">
+                                    <span class="vitals-status" id="right_instep_vitals_status">No Data</span>
+                                </td>
+                                <td class="time-cell" id="right_instep_vitals_time">--</td>
+                            </tr>
+                            <tr data-point="right_5th_mt">
+                                <td class="point-cell">
+                                    <div class="point-info">
+                                        <strong>Right 5th MT</strong>
+                                        <span class="point-number">Point 3</span>
+                                    </div>
+                                </td>
+                                <td class="temp-cell">
+                                    <span class="temp-value" id="right_5th_mt_temp">--</span>
+                                </td>
+                                <td class="spo2-cell">
+                                    <span class="spo2-value" id="right_5th_mt_spo2">--</span>
+                                </td>
+                                <td class="status-cell">
+                                    <span class="vitals-status" id="right_5th_mt_vitals_status">No Data</span>
+                                </td>
+                                <td class="time-cell" id="right_5th_mt_vitals_time">--</td>
+                            </tr>
+                            <tr data-point="right_3rd_mt">
+                                <td class="point-cell">
+                                    <div class="point-info">
+                                        <strong>Right 3rd MT</strong>
+                                        <span class="point-number">Point 4</span>
+                                    </div>
+                                </td>
+                                <td class="temp-cell">
+                                    <span class="temp-value" id="right_3rd_mt_temp">--</span>
+                                </td>
+                                <td class="spo2-cell">
+                                    <span class="spo2-value" id="right_3rd_mt_spo2">--</span>
+                                </td>
+                                <td class="status-cell">
+                                    <span class="vitals-status" id="right_3rd_mt_vitals_status">No Data</span>
+                                </td>
+                                <td class="time-cell" id="right_3rd_mt_vitals_time">--</td>
+                            </tr>
+                            <tr data-point="right_1st_mt">
+                                <td class="point-cell">
+                                    <div class="point-info">
+                                        <strong>Right 1st MT</strong>
+                                        <span class="point-number">Point 5</span>
+                                    </div>
+                                </td>
+                                <td class="temp-cell">
+                                    <span class="temp-value" id="right_1st_mt_temp">--</span>
+                                </td>
+                                <td class="spo2-cell">
+                                    <span class="spo2-value" id="right_1st_mt_spo2">--</span>
+                                </td>
+                                <td class="status-cell">
+                                    <span class="vitals-status" id="right_1st_mt_vitals_status">No Data</span>
+                                </td>
+                                <td class="time-cell" id="right_1st_mt_vitals_time">--</td>
+                            </tr>
+                            <tr data-point="right_big_toe">
+                                <td class="point-cell">
+                                    <div class="point-info">
+                                        <strong>Right Big Toe</strong>
+                                        <span class="point-number">Point 6</span>
+                                    </div>
+                                </td>
+                                <td class="temp-cell">
+                                    <span class="temp-value" id="right_big_toe_temp">--</span>
+                                </td>
+                                <td class="spo2-cell">
+                                    <span class="spo2-value" id="right_big_toe_spo2">--</span>
+                                </td>
+                                <td class="status-cell">
+                                    <span class="vitals-status" id="right_big_toe_vitals_status">No Data</span>
+                                </td>
+                                <td class="time-cell" id="right_big_toe_vitals_time">--</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Left Foot Vitals Table -->
+            <div class="foot-table-container">
+                <div class="foot-table-header">
+                    <h4><i class="fas fa-thermometer-half"></i> Left Foot Vitals</h4>
+                    <div class="foot-status">
+                        <span class="status-indicator status-normal">Normal Range</span>
+                    </div>
+                </div>
+                
+                <div class="vitals-table-wrapper">
+                    <table class="vitals-table">
+                        <thead>
+                            <tr>
+                                <th>Point</th>
+                                <th>Temperature (°C)</th>
+                                <th>SpO2 (%)</th>
+                                <th>Status</th>
+                                <th>Last Reading</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr data-point="left_heel">
+                                <td class="point-cell">
+                                    <div class="point-info">
+                                        <strong>Left Heel</strong>
+                                        <span class="point-number">Point 1</span>
+                                    </div>
+                                </td>
+                                <td class="temp-cell">
+                                    <span class="temp-value" id="left_heel_temp">--</span>
+                                </td>
+                                <td class="spo2-cell">
+                                    <span class="spo2-value" id="left_heel_spo2">--</span>
+                                </td>
+                                <td class="status-cell">
+                                    <span class="vitals-status" id="left_heel_vitals_status">No Data</span>
+                                </td>
+                                <td class="time-cell" id="left_heel_vitals_time">--</td>
+                            </tr>
+                            <tr data-point="left_instep">
+                                <td class="point-cell">
+                                    <div class="point-info">
+                                        <strong>Left In Step</strong>
+                                        <span class="point-number">Point 2</span>
+                                    </div>
+                                </td>
+                                <td class="temp-cell">
+                                    <span class="temp-value" id="left_instep_temp">--</span>
+                                </td>
+                                <td class="spo2-cell">
+                                    <span class="spo2-value" id="left_instep_spo2">--</span>
+                                </td>
+                                <td class="status-cell">
+                                    <span class="vitals-status" id="left_instep_vitals_status">No Data</span>
+                                </td>
+                                <td class="time-cell" id="left_instep_vitals_time">--</td>
+                            </tr>
+                            <tr data-point="left_5th_mt">
+                                <td class="point-cell">
+                                    <div class="point-info">
+                                        <strong>Left 5th MT</strong>
+                                        <span class="point-number">Point 3</span>
+                                    </div>
+                                </td>
+                                <td class="temp-cell">
+                                    <span class="temp-value" id="left_5th_mt_temp">--</span>
+                                </td>
+                                <td class="spo2-cell">
+                                    <span class="spo2-value" id="left_5th_mt_spo2">--</span>
+                                </td>
+                                <td class="status-cell">
+                                    <span class="vitals-status" id="left_5th_mt_vitals_status">No Data</span>
+                                </td>
+                                <td class="time-cell" id="left_5th_mt_vitals_time">--</td>
+                            </tr>
+                            <tr data-point="left_3rd_mt">
+                                <td class="point-cell">
+                                    <div class="point-info">
+                                        <strong>Left 3rd MT</strong>
+                                        <span class="point-number">Point 4</span>
+                                    </div>
+                                </td>
+                                <td class="temp-cell">
+                                    <span class="temp-value" id="left_3rd_mt_temp">--</span>
+                                </td>
+                                <td class="spo2-cell">
+                                    <span class="spo2-value" id="left_3rd_mt_spo2">--</span>
+                                </td>
+                                <td class="status-cell">
+                                    <span class="vitals-status" id="left_3rd_mt_vitals_status">No Data</span>
+                                </td>
+                                <td class="time-cell" id="left_3rd_mt_vitals_time">--</td>
+                            </tr>
+                            <tr data-point="left_1st_mt">
+                                <td class="point-cell">
+                                    <div class="point-info">
+                                        <strong>Left 1st MT</strong>
+                                        <span class="point-number">Point 5</span>
+                                    </div>
+                                </td>
+                                <td class="temp-cell">
+                                    <span class="temp-value" id="left_1st_mt_temp">--</span>
+                                </td>
+                                <td class="spo2-cell">
+                                    <span class="spo2-value" id="left_1st_mt_spo2">--</span>
+                                </td>
+                                <td class="status-cell">
+                                    <span class="vitals-status" id="left_1st_mt_vitals_status">No Data</span>
+                                </td>
+                                <td class="time-cell" id="left_1st_mt_vitals_time">--</td>
+                            </tr>
+                            <tr data-point="left_big_toe">
+                                <td class="point-cell">
+                                    <div class="point-info">
+                                        <strong>Left Big Toe</strong>
+                                        <span class="point-number">Point 6</span>
+                                    </div>
+                                </td>
+                                <td class="temp-cell">
+                                    <span class="temp-value" id="left_big_toe_temp">--</span>
+                                </td>
+                                <td class="spo2-cell">
+                                    <span class="spo2-value" id="left_big_toe_spo2">--</span>
+                                </td>
+                                <td class="status-cell">
+                                    <span class="vitals-status" id="left_big_toe_vitals_status">No Data</span>
+                                </td>
+                                <td class="time-cell" id="left_big_toe_vitals_time">--</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Measurements Table -->
+    <div class="measurements-table-container">
+        <div class="table-header">
+            <h3>Recent Measurements</h3>
+            <div class="table-actions">
+                <button class="btn btn-outline" id="exportBtn">
+                    <i class="fas fa-download"></i>
+                    Export Data
+                </button>
+                <button class="btn btn-primary" id="refreshBtn">
+                    <i class="fas fa-sync-alt"></i>
+                    Refresh
+                </button>
+            </div>
+        </div>
+        
+        <div class="table-filters">
+            <div class="filter-group">
+                <label for="measurementType">Type:</label>
+                <select id="measurementType" class="form-select">
+                    <option value="">All Types</option>
+                    <option value="vpt">VPT</option>
+                    <option value="temperature">Temperature</option>
+                    <option value="spo2">SpO2</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="bodyPart">Measurement Point:</label>
+                <select id="bodyPart" class="form-select">
+                    <option value="">All Points</option>
+                    <optgroup label="Right Foot">
+                        <option value="right_heel">Right Heel</option>
+                        <option value="right_instep">Right In Step</option>
+                        <option value="right_5th_mt">Right 5th MT</option>
+                        <option value="right_3rd_mt">Right 3rd MT</option>
+                        <option value="right_1st_mt">Right 1st MT</option>
+                        <option value="right_big_toe">Right Big Toe</option>
+                    </optgroup>
+                    <optgroup label="Left Foot">
+                        <option value="left_heel">Left Heel</option>
+                        <option value="left_instep">Left In Step</option>
+                        <option value="left_5th_mt">Left 5th MT</option>
+                        <option value="left_3rd_mt">Left 3rd MT</option>
+                        <option value="left_1st_mt">Left 1st MT</option>
+                        <option value="left_big_toe">Left Big Toe</option>
+                    </optgroup>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="dateFrom">From:</label>
+                <input type="date" id="dateFrom" class="form-input">
+            </div>
+            
+            <div class="filter-group">
+                <label for="dateTo">To:</label>
+                <input type="date" id="dateTo" class="form-input">
+            </div>
+            
+            <button class="btn btn-outline" id="clearFilters">
+                <i class="fas fa-times"></i>
+                Clear
+            </button>
+        </div>
+        
+        <div class="table-wrapper">
+            <table class="measurements-table" id="measurementsTable">
+                <thead>
+                    <tr>
+                        <th>Date & Time</th>
+                        <th>Type</th>
+                        <th>Body Part</th>
+                        <th>Value</th>
+                        <th>Unit</th>
+                        <th>Session</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="measurementsBody">
+                    {% for measurement in recent_measurements %}
+                    <tr data-measurement-id="{{ measurement.id }}">
+                        <td class="datetime-cell">
+                            <div class="datetime-value">
+                                {{ convert_timezone(measurement.timestamp).strftime('%m/%d/%Y') }}
+                            </div>
+                            <div class="time-value">
+                                {{ convert_timezone(measurement.timestamp).strftime('%I:%M %p') }}
+                            </div>
+                        </td>
+                        <td>
+                            <span class="measurement-type measurement-{{ measurement.measurement_type }}">
+                                {% if measurement.measurement_type == 'vpt' %}
+                                    <i class="fas fa-heartbeat"></i> VPT
+                                {% elif measurement.measurement_type == 'temperature' %}
+                                    <i class="fas fa-thermometer-half"></i> Temperature
+                                {% elif measurement.measurement_type == 'spo2' %}
+                                    <i class="fas fa-lungs"></i> SpO2
+                                {% endif %}
+                            </span>
+                        </td>
+                        <td>
+                            {% if measurement.body_part %}
+                                <span class="body-part">
+                                    {% if 'heel' in measurement.body_part.lower() %}
+                                        <i class="fas fa-foot"></i> {{ measurement.body_part }}
+                                    {% elif 'instep' in measurement.body_part.lower() %}
+                                        <i class="fas fa-foot"></i> {{ measurement.body_part }}
+                                    {% elif 'mt' in measurement.body_part.lower() %}
+                                        <i class="fas fa-foot"></i> {{ measurement.body_part }}
+                                    {% elif 'toe' in measurement.body_part.lower() %}
+                                        <i class="fas fa-foot"></i> {{ measurement.body_part }}
+                                    {% else %}
+                                        <i class="fas fa-foot"></i> {{ measurement.body_part }}
+                                    {% endif %}
+                                </span>
+                            {% else %}
+                                <span class="text-gray">--</span>
+                            {% endif %}
+                        </td>
+                        <td class="value-cell">
+                            <span class="measurement-value">{{ measurement.value }}</span>
+                        </td>
+                        <td class="unit-cell">
+                            {% if measurement.measurement_type == 'vpt' %}
+                                V
+                            {% elif measurement.measurement_type == 'temperature' %}
+                                °C
+                            {% elif measurement.measurement_type == 'spo2' %}
+                                %
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if measurement.session %}
+                                <a href="{{ url_for('session_detail', session_id=measurement.session.id) }}" class="session-link">
+                                    Session #{{ measurement.session.id }}
+                                </a>
+                            {% else %}
+                                <span class="text-gray">--</span>
+                            {% endif %}
+                        </td>
+                        <td class="actions-cell">
+                            <div class="action-buttons">
+                                <button class="btn-icon" title="View Details" data-measurement-id="{{ measurement.id }}" data-action="view">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="btn-icon" title="Download" data-measurement-id="{{ measurement.id }}" data-action="download">
+                                    <i class="fas fa-download"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr id="noDataRow">
+                        <td colspan="7" class="no-data">
+                            <div class="no-data-content">
+                                <i class="fas fa-chart-line"></i>
+                                <h4>No measurements found</h4>
+                                <p>Start taking measurements to see your data here.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination -->
+        {% if measurements %}
+        <div class="pagination-container">
+            <div class="pagination-info">
+                Showing {{ measurements|length }} measurements
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.data-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.summary-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+}
+
+.summary-card {
+    background: var(--white);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--light-gray);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    transition: var(--transition);
+}
+
+.summary-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.card-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: var(--white);
+    background: linear-gradient(135deg, var(--primary-blue), var(--secondary-blue));
+}
+
+.card-content h3 {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--gray);
+    margin-bottom: 0.5rem;
+}
+
+.card-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin-bottom: 0.25rem;
+}
+
+.card-label {
+    font-size: 0.75rem;
+    color: var(--gray);
+}
+
+.data-visualization {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+.chart-full-width {
+    grid-column: 1 / -1;
+}
+
+.vpt-tables-section {
+    margin-bottom: 2rem;
+}
+
+.section-header {
+    margin-bottom: 1.5rem;
+}
+
+.section-header h3 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin-bottom: 0.5rem;
+}
+
+.section-header p {
+    color: var(--gray);
+    font-size: 0.95rem;
+    margin: 0;
+}
+
+.foot-tables-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+}
+
+.foot-table-container {
+    background: var(--white);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    border: 1px solid var(--light-gray);
+    overflow: hidden;
+}
+
+.foot-table-header {
+    padding: 1.5rem;
+    background: linear-gradient(135deg, var(--off-white), rgba(96, 165, 250, 0.05));
+    border-bottom: 1px solid var(--light-gray);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.foot-table-header h4 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-dark);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.foot-table-header i {
+    color: var(--primary-blue);
+}
+
+.foot-status {
+    display: flex;
+    align-items: center;
+}
+
+.status-indicator {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.375rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-normal {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success);
+}
+
+.status-warning {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--warning);
+}
+
+.status-critical {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--danger);
+}
+
+.vpt-table-wrapper {
+    overflow-x: auto;
+}
+
+.vpt-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+}
+
+.vpt-table th {
+    background: var(--off-white);
+    padding: 1rem 0.75rem;
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-dark);
+    border-bottom: 2px solid var(--light-gray);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.vpt-table td {
+    padding: 1rem 0.75rem;
+    border-bottom: 1px solid var(--light-gray);
+    vertical-align: middle;
+}
+
+.vpt-table tbody tr:hover {
+    background: var(--off-white);
+}
+
+.point-cell {
+    min-width: 140px;
+}
+
+.point-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.point-info strong {
+    color: var(--text-dark);
+    font-size: 0.875rem;
+}
+
+.point-number {
+    font-size: 0.75rem;
+    color: var(--gray);
+    font-weight: 500;
+}
+
+.threshold-cell {
+    text-align: center;
+    font-weight: 600;
+    color: var(--primary-blue);
+    min-width: 80px;
+}
+
+.value-cell {
+    text-align: center;
+    min-width: 80px;
+}
+
+.measurement-value {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-dark);
+}
+
+.status-cell {
+    text-align: center;
+    min-width: 100px;
+}
+
+.measurement-status {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.measurement-status.normal {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success);
+}
+
+.measurement-status.elevated {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--warning);
+}
+
+.measurement-status.high {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--danger);
+}
+
+.measurement-status.no-data {
+    background: rgba(107, 114, 128, 0.1);
+    color: var(--gray);
+}
+
+.time-cell {
+    font-size: 0.8rem;
+    color: var(--gray);
+    min-width: 100px;
+}
+
+@media (max-width: 1200px) {
+    .foot-tables-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.chart-container {
+    background: var(--white);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    border: 1px solid var(--light-gray);
+    overflow: hidden;
+}
+
+.chart-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--light-gray);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.chart-header h3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-dark);
+    margin: 0;
+}
+
+.chart-controls {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.form-select {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--light-gray);
+    border-radius: 6px;
+    font-size: 0.875rem;
+    background: var(--white);
+    color: var(--text-dark);
+}
+
+.chart-toggle {
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--light-gray);
+    background: var(--white);
+    color: var(--gray);
+    border-radius: 6px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.chart-toggle.active,
+.chart-toggle:hover {
+    background: var(--primary-blue);
+    color: var(--white);
+    border-color: var(--primary-blue);
+}
+
+.chart-content {
+    padding: 1.5rem;
+    height: 300px;
+    position: relative;
+}
+
+.measurements-table-container {
+    background: var(--white);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    border: 1px solid var(--light-gray);
+    overflow: hidden;
+}
+
+.table-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--light-gray);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.table-header h3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-dark);
+    margin: 0;
+}
+
+.table-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.table-filters {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--light-gray);
+    display: flex;
+    gap: 1rem;
+    align-items: end;
+    flex-wrap: wrap;
+    background: var(--off-white);
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.filter-group label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--gray);
+}
+
+.form-input,
+.form-select {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--light-gray);
+    border-radius: 6px;
+    font-size: 0.875rem;
+    background: var(--white);
+    color: var(--text-dark);
+    min-width: 120px;
+}
+
+.table-wrapper {
+    overflow-x: auto;
+}
+
+.measurements-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+}
+
+.measurements-table th {
+    background: var(--off-white);
+    padding: 1rem 0.75rem;
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-dark);
+    border-bottom: 2px solid var(--light-gray);
+    white-space: nowrap;
+}
+
+.measurements-table td {
+    padding: 1rem 0.75rem;
+    border-bottom: 1px solid var(--light-gray);
+    vertical-align: top;
+}
+
+.measurements-table tbody tr:hover {
+    background: var(--off-white);
+}
+
+.datetime-cell {
+    min-width: 120px;
+}
+
+.datetime-value {
+    font-weight: 500;
+    color: var(--text-dark);
+}
+
+.time-value {
+    font-size: 0.75rem;
+    color: var(--gray);
+    margin-top: 0.25rem;
+}
+
+.measurement-type {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.measurement-vpt {
+    background: rgba(239, 68, 68, 0.1);
+    color: #dc2626;
+}
+
+.measurement-temperature {
+    background: rgba(245, 158, 11, 0.1);
+    color: #d97706;
+}
+
+.measurement-spo2 {
+    background: rgba(16, 185, 129, 0.1);
+    color: #059669;
+}
+
+.body-part {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-dark);
+    font-size: 0.875rem;
+}
+
+.value-cell {
+    font-weight: 600;
+    color: var(--text-dark);
+    text-align: right;
+}
+
+.unit-cell {
+    color: var(--gray);
+    font-size: 0.8rem;
+}
+
+.session-link {
+    color: var(--primary-blue);
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.8rem;
+}
+
+.session-link:hover {
+    text-decoration: underline;
+}
+
+.actions-cell {
+    width: 80px;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.btn-icon {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: var(--light-gray);
+    color: var(--gray);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: 0.75rem;
+}
+
+.btn-icon:hover {
+    background: var(--primary-blue);
+    color: var(--white);
+}
+
+.no-data {
+    text-align: center;
+    padding: 3rem 1rem;
+}
+
+.no-data-content i {
+    font-size: 3rem;
+    color: var(--light-gray);
+    margin-bottom: 1rem;
+}
+
+.no-data-content h4 {
+    color: var(--gray);
+    margin-bottom: 0.5rem;
+}
+
+.no-data-content p {
+    color: var(--gray);
+    font-size: 0.875rem;
+}
+
+.pagination-container {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--light-gray);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.pagination-info {
+    font-size: 0.875rem;
+    color: var(--gray);
+}
+
+.pagination {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.page-btn {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--light-gray);
+    background: var(--white);
+    color: var(--gray);
+    text-decoration: none;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    transition: var(--transition);
+}
+
+.page-btn:hover:not(.disabled):not(.active) {
+    background: var(--off-white);
+    border-color: var(--primary-blue);
+    color: var(--primary-blue);
+}
+
+.page-btn.active {
+    background: var(--primary-blue);
+    color: var(--white);
+    border-color: var(--primary-blue);
+}
+
+.page-btn.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.text-gray {
+    color: var(--gray);
+}
+
+@media (max-width: 1024px) {
+    .data-visualization {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .summary-cards {
+        grid-template-columns: 1fr;
+    }
+    
+    .table-actions,
+    .table-filters {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .filter-group {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+    
+    .pagination-container {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .chart-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .chart-controls {
+        justify-content: center;
+    }
+}
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Chart instances
+let rightFootChart = null;
+let leftFootChart = null;
+let rightVitalsChart = null;
+let leftVitalsChart = null;
+
+// Initialize charts
+document.addEventListener('DOMContentLoaded', function() {
+    initializeCharts();
+    setupEventListeners();
+    loadData();
+});
+
+function initializeCharts() {
+    // Right Foot Chart
+    const rightFootCtx = document.getElementById('rightFootChart').getContext('2d');
+    rightFootChart = new Chart(rightFootCtx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Right Heel',
+                data: [],
+                borderColor: '#ef4444',
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                tension: 0.4,
+                spanGaps: true,
+                pointRadius: 4,
+                pointHoverRadius: 6
+            }, {
+                label: 'Right In Step',
+                data: [],
+                borderColor: '#f59e0b',
+                backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                tension: 0.4,
+                spanGaps: true,
+                pointRadius: 4,
+                pointHoverRadius: 6
+            }, {
+                label: 'Right 5th MT',
+                data: [],
+                borderColor: '#3b82f6',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                tension: 0.4,
+                spanGaps: true,
+                pointRadius: 4,
+                pointHoverRadius: 6
+            }, {
+                label: 'Right 3rd MT',
+                data: [],
+                borderColor: '#10b981',
+                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                tension: 0.4,
+                spanGaps: true,
+                pointRadius: 4,
+                pointHoverRadius: 6
+            }, {
+                label: 'Right 1st MT',
+                data: [],
+                borderColor: '#8b5cf6',
+                backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                tension: 0.4,
+                spanGaps: true,
+                pointRadius: 4,
+                pointHoverRadius: 6
+            }, {
+                label: 'Right Big Toe',
+                data: [],
+                borderColor: '#06b6d4',
+                backgroundColor: 'rgba(6, 182, 212, 0.1)',
+                tension: 0.4,
+                spanGaps: true,
+                pointRadius: 4,
+                pointHoverRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 50,
+                    title: {
+                        display: true,
+                        text: 'VPT (Volts)'
+                    },
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.1)'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Time'
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 15
+                    }
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false
+                }
+            },
+            interaction: {
+                mode: 'nearest',
+                axis: 'x',
+                intersect: false
+            },
+            elements: {
+                point: {
+                    radius: 3,
+                    hoverRadius: 5
+                }
+            }
+        }
+    });
+
+    // Left Foot Chart
+    const leftFootCtx = document.getElementById('leftFootChart').getContext('2d');
+    leftFootChart = new Chart(leftFootCtx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Left Heel',
+                data: [],
+                borderColor: '#ef4444',
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                tension: 0.4,
+                spanGaps: true,
+                pointRadius: 4,
+                pointHoverRadius: 6
+            }, {
+                label: 'Left In Step',
+                data: [],
+                borderColor: '#f59e0b',
+                backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                tension: 0.4,
+                spanGaps: true,
+                pointRadius: 4,
+                pointHoverRadius: 6
+            }, {
+                label: 'Left 5th MT',
+                data: [],
+                borderColor: '#3b82f6',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                tension: 0.4,
+                spanGaps: true,
+                pointRadius: 4,
+                pointHoverRadius: 6
+            }, {
+                label: 'Left 3rd MT',
+                data: [],
+                borderColor: '#10b981',
+                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                tension: 0.4,
+                spanGaps: true,
+                pointRadius: 4,
+                pointHoverRadius: 6
+            }, {
+                label: 'Left 1st MT',
+                data: [],
+                borderColor: '#8b5cf6',
+                backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                tension: 0.4,
+                spanGaps: true,
+                pointRadius: 4,
+                pointHoverRadius: 6
+            }, {
+                label: 'Left Big Toe',
+                data: [],
+                borderColor: '#06b6d4',
+                backgroundColor: 'rgba(6, 182, 212, 0.1)',
+                tension: 0.4,
+                spanGaps: true,
+                pointRadius: 4,
+                pointHoverRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 50,
+                    title: {
+                        display: true,
+                        text: 'VPT (Volts)'
+                    },
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.1)'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Date'
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 15
+                    }
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false
+                }
+            },
+            interaction: {
+                mode: 'nearest',
+                axis: 'x',
+                intersect: false
+            }
+        }
+    });
+
+    // Right Foot Vitals Chart
+    const rightVitalsCtx = document.getElementById('rightVitalsChart').getContext('2d');
+    rightVitalsChart = new Chart(rightVitalsCtx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Temperature (°C)',
+                data: [],
+                borderColor: '#ef4444',
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                tension: 0.4,
+                yAxisID: 'y'
+            }, {
+                label: 'SpO2 (%)',
+                data: [],
+                borderColor: '#8b5cf6',
+                backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                tension: 0.4,
+                yAxisID: 'y1'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    title: {
+                        display: true,
+                        text: 'Temperature (°C)'
+                    },
+                    min: 35,
+                    max: 40
+                },
+                y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    title: {
+                        display: true,
+                        text: 'SpO2 (%)'
+                    },
+                    min: 90,
+                    max: 100,
+                    grid: {
+                        drawOnChartArea: false,
+                    },
+                }
+            },
+            plugins: {
+                legend: {
+                    position: 'top'
+                },
+                title: {
+                    display: true,
+                    text: 'Right Foot Vitals'
+                }
+            }
+        }
+    });
+
+    // Left Foot Vitals Chart
+    const leftVitalsCtx = document.getElementById('leftVitalsChart').getContext('2d');
+    leftVitalsChart = new Chart(leftVitalsCtx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Temperature (°C)',
+                data: [],
+                borderColor: '#ef4444',
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                tension: 0.4,
+                yAxisID: 'y'
+            }, {
+                label: 'SpO2 (%)',
+                data: [],
+                borderColor: '#8b5cf6',
+                backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                tension: 0.4,
+                yAxisID: 'y1'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    title: {
+                        display: true,
+                        text: 'Temperature (°C)'
+                    },
+                    min: 35,
+                    max: 40
+                },
+                y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    title: {
+                        display: true,
+                        text: 'SpO2 (%)'
+                    },
+                    min: 90,
+                    max: 100,
+                    grid: {
+                        drawOnChartArea: false,
+                    },
+                }
+            },
+            plugins: {
+                legend: {
+                    position: 'top'
+                },
+                title: {
+                    display: true,
+                    text: 'Left Foot Vitals'
+                }
+            }
+        }
+    });
+}
+
+function setupEventListeners() {
+    // Time range change for both feet
+    document.getElementById('timeRange').addEventListener('change', function() {
+        loadChartData();
+    });
+    
+    document.getElementById('leftTimeRange').addEventListener('change', function() {
+        loadChartData();
+    });
+
+    // Chart toggles for vitals
+    document.querySelectorAll('.chart-toggle').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const foot = this.dataset.foot;
+            const chart = this.dataset.chart;
+            
+            // Update active state for this foot's toggles
+            document.querySelectorAll(`.chart-toggle[data-foot="${foot}"]`).forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Update the appropriate chart
+            if (foot === 'right') {
+                updateRightVitalsChartVisibility(chart);
+            } else if (foot === 'left') {
+                updateLeftVitalsChartVisibility(chart);
+            }
+        });
+    });
+
+    // Filter controls
+    document.getElementById('measurementType').addEventListener('change', filterTable);
+    document.getElementById('bodyPart').addEventListener('change', filterTable);
+    document.getElementById('dateFrom').addEventListener('change', filterTable);
+    document.getElementById('dateTo').addEventListener('change', filterTable);
+    
+    document.getElementById('clearFilters').addEventListener('click', clearFilters);
+    document.getElementById('refreshBtn').addEventListener('click', refreshData);
+    document.getElementById('exportBtn').addEventListener('click', exportData);
+    
+    // Action buttons
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.btn-icon')) {
+            const btn = e.target.closest('.btn-icon');
+            const measurementId = btn.dataset.measurementId;
+            const action = btn.dataset.action;
+            
+            if (action === 'view') {
+                viewMeasurement(measurementId);
+            } else if (action === 'download') {
+                downloadMeasurement(measurementId);
+            }
+        }
+    });
+}
+
+function loadData() {
+    loadChartData();
+    loadVPTTableData();
+    loadVitalsTableData();
+}
+
+function loadChartData() {
+    const timeRange = document.getElementById('timeRange').value;
+    const leftTimeRange = document.getElementById('leftTimeRange').value;
+    
+    // Load chart data from API
+    fetch(`/api/chart-data?days=${timeRange}`)
+        .then(response => response.json())
+        .then(data => {
+            console.log('Chart data received:', data);
+            updateRightFootChart(data.rightFoot);
+            updateLeftFootChart(data.leftFoot);
+            updateRightVitalsChart(data.vitals);
+            updateLeftVitalsChart(data.vitals);
+        })
+        .catch(error => {
+            console.error('Error loading chart data:', error);
+            // Show empty charts instead of mock data
+            showEmptyCharts();
+        });
+}
+
+function loadVPTTableData() {
+    // Load current VPT readings for both feet
+    fetch('/api/current-vpt-readings')
+        .then(response => response.json())
+        .then(data => {
+            updateVPTTables(data);
+        })
+        .catch(error => {
+            console.error('Error loading VPT data:', error);
+            // Show empty tables instead of mock data
+            showEmptyVPTTables();
+        });
+}
+
+function updateRightFootChart(data) {
+    if (!data || !data.labels || data.labels.length === 0) {
+        console.log('No data available for right foot chart');
+        showEmptyChart(rightFootChart);
+        return;
+    }
+    
+    console.log('Updating right foot chart with data:', data);
+    
+    rightFootChart.data.labels = data.labels;
+    
+    // Update each dataset with proper data, filtering out null values for line continuity
+    const datasets = [
+        { key: 'heel', index: 0, label: 'Right Heel' },
+        { key: 'instep', index: 1, label: 'Right In Step' },
+        { key: 'fifth_mt', index: 2, label: 'Right 5th MT' },
+        { key: 'third_mt', index: 3, label: 'Right 3rd MT' },
+        { key: 'first_mt', index: 4, label: 'Right 1st MT' },
+        { key: 'big_toe', index: 5, label: 'Right Big Toe' }
+    ];
+    
+    datasets.forEach(dataset => {
+        const values = data[dataset.key] || [];
+        rightFootChart.data.datasets[dataset.index].data = values;
+        
+        // Hide dataset if no data
+        const hasData = values.some(v => v !== null && v !== undefined);
+        rightFootChart.data.datasets[dataset.index].hidden = !hasData;
+    });
+    
+    rightFootChart.update('none'); // Disable animation for better performance
+}
+
+function updateLeftFootChart(data) {
+    if (!data || !data.labels || data.labels.length === 0) {
+        console.log('No data available for left foot chart');
+        showEmptyChart(leftFootChart);
+        return;
+    }
+    
+    console.log('Updating left foot chart with data:', data);
+    
+    leftFootChart.data.labels = data.labels;
+    
+    // Update each dataset with proper data, filtering out null values for line continuity  
+    const datasets = [
+        { key: 'heel', index: 0, label: 'Left Heel' },
+        { key: 'instep', index: 1, label: 'Left In Step' },
+        { key: 'fifth_mt', index: 2, label: 'Left 5th MT' },
+        { key: 'third_mt', index: 3, label: 'Left 3rd MT' },
+        { key: 'first_mt', index: 4, label: 'Left 1st MT' },
+        { key: 'big_toe', index: 5, label: 'Left Big Toe' }
+    ];
+    
+    datasets.forEach(dataset => {
+        const values = data[dataset.key] || [];
+        leftFootChart.data.datasets[dataset.index].data = values;
+        
+        // Hide dataset if no data
+        const hasData = values.some(v => v !== null && v !== undefined);
+        leftFootChart.data.datasets[dataset.index].hidden = !hasData;
+    });
+    
+    leftFootChart.update('none'); // Disable animation for better performance
+}
+
+function updateVPTTables(data) {
+    // Update right foot table
+    const rightPoints = ['heel', 'instep', '5th_mt', '3rd_mt', '1st_mt', 'big_toe'];
+    rightPoints.forEach(point => {
+        const pointData = data.right[point];
+        if (pointData) {
+            document.getElementById(`right_${point}_value`).textContent = `${pointData.value}V`;
+            document.getElementById(`right_${point}_time`).textContent = pointData.time;
+            
+            const statusElement = document.getElementById(`right_${point}_status`);
+            statusElement.textContent = pointData.status;
+            statusElement.className = `measurement-status ${pointData.status.toLowerCase().replace(' ', '-')}`;
+        }
+    });
+    
+    // Update left foot table
+    const leftPoints = ['heel', 'instep', '5th_mt', '3rd_mt', '1st_mt', 'big_toe'];
+    leftPoints.forEach(point => {
+        const pointData = data.left[point];
+        if (pointData) {
+            document.getElementById(`left_${point}_value`).textContent = `${pointData.value}V`;
+            document.getElementById(`left_${point}_time`).textContent = pointData.time;
+            
+            const statusElement = document.getElementById(`left_${point}_status`);
+            statusElement.textContent = pointData.status;
+            statusElement.className = `measurement-status ${pointData.status.toLowerCase().replace(' ', '-')}`;
+        }
+    });
+}
+
+function filterTable() {
+    const type = document.getElementById('measurementType').value;
+    const bodyPart = document.getElementById('bodyPart').value;
+    const dateFrom = document.getElementById('dateFrom').value;
+    const dateTo = document.getElementById('dateTo').value;
+    
+    const rows = document.querySelectorAll('#measurementsBody tr:not(#noDataRow)');
+    let visibleCount = 0;
+    
+    rows.forEach(row => {
+        let show = true;
+        
+        if (type) {
+            const rowType = row.querySelector('.measurement-type').textContent.toLowerCase().trim();
+            if (!rowType.includes(type)) show = false;
+        }
+        
+        if (bodyPart && show) {
+            const rowBodyPart = row.querySelector('.body-part');
+            if (!rowBodyPart || !rowBodyPart.textContent.toLowerCase().includes(bodyPart.replace('_', ' '))) {
+                show = false;
+            }
+        }
+        
+        if ((dateFrom || dateTo) && show) {
+            const rowDate = row.querySelector('.datetime-value').textContent;
+            const rowDateObj = new Date(rowDate);
+            
+            if (dateFrom && rowDateObj < new Date(dateFrom)) show = false;
+            if (dateTo && rowDateObj > new Date(dateTo)) show = false;
+        }
+        
+        row.style.display = show ? '' : 'none';
+        if (show) visibleCount++;
+    });
+    
+    // Show/hide no data row
+    const noDataRow = document.getElementById('noDataRow');
+    if (noDataRow) {
+        noDataRow.style.display = visibleCount === 0 ? '' : 'none';
+    }
+}
+
+function clearFilters() {
+    document.getElementById('measurementType').value = '';
+    document.getElementById('bodyPart').value = '';
+    document.getElementById('dateFrom').value = '';
+    document.getElementById('dateTo').value = '';
+    filterTable();
+}
+
+function refreshData() {
+    const refreshBtn = document.getElementById('refreshBtn');
+    const icon = refreshBtn.querySelector('i');
+    
+    icon.classList.add('fa-spin');
+    refreshBtn.disabled = true;
+    
+    setTimeout(() => {
+        location.reload();
+    }, 1000);
+}
+
+function exportData() {
+    // Simulate export
+    const exportBtn = document.getElementById('exportBtn');
+    const originalText = exportBtn.innerHTML;
+    
+    exportBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Exporting...';
+    exportBtn.disabled = true;
+    
+    setTimeout(() => {
+        // Create and download CSV
+        const headers = ['Date', 'Time', 'Type', 'Body Part', 'Value', 'Unit'];
+        const rows = [];
+        
+        document.querySelectorAll('#measurementsBody tr:not(#noDataRow)').forEach(row => {
+            if (row.style.display !== 'none') {
+                const cells = row.querySelectorAll('td');
+                const rowData = [
+                    cells[0].querySelector('.datetime-value').textContent,
+                    cells[0].querySelector('.time-value').textContent,
+                    cells[1].textContent.trim(),
+                    cells[2].textContent.trim(),
+                    cells[3].textContent.trim(),
+                    cells[4].textContent.trim()
+                ];
+                rows.push(rowData);
+            }
+        });
+        
+        const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `measurements_${new Date().toISOString().split('T')[0]}.csv`;
+        link.click();
+        window.URL.revokeObjectURL(url);
+        
+        exportBtn.innerHTML = originalText;
+        exportBtn.disabled = false;
+    }, 1500);
+}
+
+function loadVitalsTableData() {
+    // Load current vitals readings for both feet
+    fetch('/api/current-vitals-readings')
+        .then(response => response.json())
+        .then(data => {
+            updateVitalsTables(data);
+        })
+        .catch(error => {
+            console.error('Error loading vitals data:', error);
+            // Show empty tables instead of mock data
+            showEmptyVitalsTables();
+        });
+}
+
+function updateRightVitalsChart(data) {
+    if (!data || !data.labels) {
+        console.log('No data available for right vitals chart');
+        return;
+    }
+    
+    rightVitalsChart.data.labels = data.labels;
+    rightVitalsChart.data.datasets[0].data = data.temperature || [];
+    rightVitalsChart.data.datasets[1].data = data.spo2 || [];
+    rightVitalsChart.update();
+}
+
+function updateLeftVitalsChart(data) {
+    if (!data || !data.labels) {
+        console.log('No data available for left vitals chart');
+        return;
+    }
+    
+    leftVitalsChart.data.labels = data.labels;
+    leftVitalsChart.data.datasets[0].data = data.temperature || [];
+    leftVitalsChart.data.datasets[1].data = data.spo2 || [];
+    leftVitalsChart.update();
+}
+
+function updateRightVitalsChartVisibility(chartType) {
+    const chart = rightVitalsChart;
+    
+    switch(chartType) {
+        case 'temp':
+            chart.data.datasets[0].hidden = false;
+            chart.data.datasets[1].hidden = true;
+            break;
+        case 'spo2':
+            chart.data.datasets[0].hidden = true;
+            chart.data.datasets[1].hidden = false;
+            break;
+        case 'both':
+            chart.data.datasets[0].hidden = false;
+            chart.data.datasets[1].hidden = false;
+            break;
+    }
+    chart.update();
+}
+
+function updateLeftVitalsChartVisibility(chartType) {
+    const chart = leftVitalsChart;
+    
+    switch(chartType) {
+        case 'temp':
+            chart.data.datasets[0].hidden = false;
+            chart.data.datasets[1].hidden = true;
+            break;
+        case 'spo2':
+            chart.data.datasets[0].hidden = true;
+            chart.data.datasets[1].hidden = false;
+            break;
+        case 'both':
+            chart.data.datasets[0].hidden = false;
+            chart.data.datasets[1].hidden = false;
+            break;
+    }
+    chart.update();
+}
+
+function updateVitalsTables(data) {
+    // Update right foot vitals table
+    const rightPoints = ['heel', 'instep', '5th_mt', '3rd_mt', '1st_mt', 'big_toe'];
+    rightPoints.forEach(point => {
+        const pointData = data.right[point];
+        if (pointData && pointData.temperature !== undefined && pointData.spo2 !== undefined) {
+            document.getElementById(`right_${point}_temp`).textContent = `${pointData.temperature.toFixed(1)}°C`;
+            document.getElementById(`right_${point}_spo2`).textContent = `${pointData.spo2}%`;
+            document.getElementById(`right_${point}_vitals_time`).textContent = pointData.time;
+            
+            const statusElement = document.getElementById(`right_${point}_vitals_status`);
+            statusElement.textContent = pointData.status;
+            statusElement.className = `vitals-status ${pointData.status.toLowerCase().replace(' ', '-').replace('abnormal', 'warning')}`;
+        }
+    });
+    
+    // Update left foot vitals table
+    const leftPoints = ['heel', 'instep', '5th_mt', '3rd_mt', '1st_mt', 'big_toe'];
+    leftPoints.forEach(point => {
+        const pointData = data.left[point];
+        if (pointData && pointData.temperature !== undefined && pointData.spo2 !== undefined) {
+            document.getElementById(`left_${point}_temp`).textContent = `${pointData.temperature.toFixed(1)}°C`;
+            document.getElementById(`left_${point}_spo2`).textContent = `${pointData.spo2}%`;
+            document.getElementById(`left_${point}_vitals_time`).textContent = pointData.time;
+            
+            const statusElement = document.getElementById(`left_${point}_vitals_status`);
+            statusElement.textContent = pointData.status;
+            statusElement.className = `vitals-status ${pointData.status.toLowerCase().replace(' ', '-').replace('abnormal', 'warning')}`;
+        }
+    });
+}
+
+function showEmptyChart(chart) {
+    // Show empty state for a single chart
+    if (chart) {
+        chart.data.labels = [];
+        chart.data.datasets.forEach(dataset => {
+            dataset.data = [];
+            dataset.hidden = false; // Show all datasets in empty state
+        });
+        chart.update('none');
+    }
+}
+
+function showEmptyCharts() {
+    // Show empty state for all charts
+    if (rightFootChart) {
+        rightFootChart.data.labels = [];
+        rightFootChart.data.datasets.forEach(dataset => dataset.data = []);
+        rightFootChart.update();
+    }
+    
+    if (leftFootChart) {
+        leftFootChart.data.labels = [];
+        leftFootChart.data.datasets.forEach(dataset => dataset.data = []);
+        leftFootChart.update();
+    }
+    
+    if (rightVitalsChart) {
+        rightVitalsChart.data.labels = [];
+        rightVitalsChart.data.datasets.forEach(dataset => dataset.data = []);
+        rightVitalsChart.update();
+    }
+    
+    if (leftVitalsChart) {
+        leftVitalsChart.data.labels = [];
+        leftVitalsChart.data.datasets.forEach(dataset => dataset.data = []);
+        leftVitalsChart.update();
+    }
+}
+
+function showEmptyVPTTables() {
+    // Show empty state for VPT tables
+    const points = ['heel', 'instep', '5th_mt', '3rd_mt', '1st_mt', 'big_toe'];
+    ['right', 'left'].forEach(foot => {
+        points.forEach(point => {
+            const valueElement = document.getElementById(`${foot}_${point}_value`);
+            const statusElement = document.getElementById(`${foot}_${point}_status`);
+            const timeElement = document.getElementById(`${foot}_${point}_time`);
+            
+            if (valueElement) valueElement.textContent = '--';
+            if (statusElement) {
+                statusElement.textContent = 'No Data';
+                statusElement.className = 'measurement-status no-data';
+            }
+            if (timeElement) timeElement.textContent = '--';
+        });
+    });
+}
+
+function showEmptyVitalsTables() {
+    // Show empty state for vitals tables
+    const points = ['heel', 'instep', '5th_mt', '3rd_mt', '1st_mt', 'big_toe'];
+    ['right', 'left'].forEach(foot => {
+        points.forEach(point => {
+            const tempElement = document.getElementById(`${foot}_${point}_temp`);
+            const spo2Element = document.getElementById(`${foot}_${point}_spo2`);
+            const statusElement = document.getElementById(`${foot}_${point}_vitals_status`);
+            const timeElement = document.getElementById(`${foot}_${point}_vitals_time`);
+            
+            if (tempElement) tempElement.textContent = '--';
+            if (spo2Element) spo2Element.textContent = '--';
+            if (statusElement) {
+                statusElement.textContent = 'No Data';
+                statusElement.className = 'vitals-status no-data';
+            }
+            if (timeElement) timeElement.textContent = '--';
+        });
+    });
+}
+
+function viewMeasurement(id) {
+    // Show measurement details modal
+    alert(`View measurement ${id} - This would open a detailed view`);
+}
+
+function downloadMeasurement(id) {
+    // Download single measurement
+    alert(`Download measurement ${id} - This would download the measurement data`);
+}
+</script>
+{% endblock %}

@@ -1,0 +1,311 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Hero Section -->
+<section id="home" class="hero">
+    <div class="hero-background">
+        <div class="hero-overlay"></div>
+    </div>
+    <div class="container">
+        <div class="hero-content">
+            <div class="hero-text">
+                <h1 class="hero-title">
+                    <span class="highlight">LIWANAG</span>
+                </h1>
+                <p class="hero-subtitle">Mapping Health, One Step Ahead</p>
+                <p class="hero-description">
+                    Limb Inspection for Widespread Analysis of Neuropathy and Assessment for Guidance
+                </p>
+                <p class="hero-tagline">
+                    An innovative robotic system for early detection of diabetic foot ulcers
+                </p>
+                <div class="hero-buttons">
+                    <a href="{{ url_for('login') }}" class="btn btn-primary">Access Dashboard</a>
+                    <a href="#about" class="btn btn-secondary">Learn More</a>
+                </div>
+            </div>
+            <div class="hero-visual">
+                <div class="tech-circle">
+                    <div class="pulse-ring"></div>
+                    <div class="pulse-ring delay-1"></div>
+                    <div class="pulse-ring delay-2"></div>
+                    <i class="fas fa-heartbeat"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="scroll-indicator">
+        <div class="scroll-arrow"></div>
+    </div>
+</section>
+
+<!-- About LIWANAG Section -->
+<section id="about" class="about-section">
+    <div class="container">
+        <div class="section-header">
+            <h2 class="section-title">About L.I.W.A.N.A.G.</h2>
+            <div class="title-underline"></div>
+        </div>
+        <div class="about-content">
+            <div class="about-text">
+                <p class="lead">
+                    L.I.W.A.N.A.G. (Limb Inspection for Widespread Analysis of Neuropathy and Assessment for Guidance) 
+                    is an innovative and automated robotic system designed for the early detection of diabetic foot ulcers (DFUs). 
+                    This cost-effective device serves as an alternative to more expensive digital biothesiometers.
+                </p>
+                <p>
+                    The system integrates several key functions to provide a comprehensive risk assessment and aims to address 
+                    the critical gap in accessible early detection, particularly in underserved communities and low-resource 
+                    healthcare settings.
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Features Section -->
+<section class="features-section">
+    <div class="container">
+        <div class="section-header">
+            <h2 class="section-title">Key Features</h2>
+            <div class="title-underline"></div>
+        </div>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-wave-square"></i>
+                </div>
+                <h3>Vibration Perception Threshold (VPT)</h3>
+                <p>Measures nerve sensitivity to detect neuropathy, a primary risk factor for DFUs.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-thermometer-half"></i>
+                </div>
+                <h3>Temperature Monitoring</h3>
+                <p>Analyzes skin temperature differences to identify inflammation. A temperature difference of 2.2°C indicates inflammation.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-shoe-prints"></i>
+                </div>
+                <h3>Plantar Pressure Analysis</h3>
+                <p>Monitors pressure distribution on the foot to pinpoint high-risk areas prone to developing ulcers.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-heartbeat"></i>
+                </div>
+                <h3>Photoplethysmography (PPG)</h3>
+                <p>Uses optical sensors to evaluate blood oxygen saturation (SpO2) and heart rate, providing insights into vascular health.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Mission Section -->
+<section id="mission" class="mission-section">
+    <div class="container">
+        <div class="mission-content">
+            <div class="mission-text">
+                <h2>Our Mission</h2>
+                <p>
+                    Our mission is to develop an affordable, efficient, and accessible diagnostic tool to combat the rising 
+                    prevalence of diabetic foot complications. We aim to bridge the gap in preventative care, especially in 
+                    low-income regions, by providing an integrated solution for the early detection of diabetic foot ulcers.
+                </p>
+                <p>
+                    Through L.I.W.A.N.A.G., we strive to empower healthcare professionals, improve patient outcomes, and 
+                    contribute to a more proactive and equitable approach to diabetes management.
+                </p>
+                <div class="mission-stats">
+                    <div class="stat">
+                        <div class="stat-number">100%</div>
+                        <div class="stat-label">Dedicated</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-number">24/7</div>
+                        <div class="stat-label">Innovation</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-number">∞</div>
+                        <div class="stat-label">Possibilities</div>
+                    </div>
+                </div>
+            </div>
+            <div class="mission-visual">
+                <div class="mission-card">
+                    <i class="fas fa-bullseye"></i>
+                    <h4>Early Detection</h4>
+                    <p>Prevent severe complications</p>
+                </div>
+                <div class="mission-card">
+                    <i class="fas fa-dollar-sign"></i>
+                    <h4>Cost-Effective</h4>
+                    <p>Reduce healthcare costs</p>
+                </div>
+                <div class="mission-card">
+                    <i class="fas fa-heart"></i>
+                    <h4>Better Quality</h4>
+                    <p>Improve quality of life</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Call to Action Section -->
+<section class="cta-section">
+    <div class="container">
+        <div class="cta-content">
+            <h2>Ready to Get Started?</h2>
+            <p>Join healthcare professionals already using LIWANAG to monitor diabetic foot health and prevent complications.</p>
+            <div class="cta-buttons">
+                <a href="{{ url_for('register') }}" class="btn btn-primary btn-lg">Create Account</a>
+                <a href="{{ url_for('login') }}" class="btn btn-secondary btn-lg">Sign In</a>
+            </div>
+            <p class="cta-note">
+                <i class="fas fa-shield-alt"></i>
+                Secure, HIPAA-compliant data protection
+            </p>
+        </div>
+    </div>
+</section>
+
+<!-- Team Section -->
+<section id="team" class="team-section">
+    <div class="container">
+        <div class="section-header">
+            <h2 class="section-title">About Us</h2>
+            <div class="title-underline"></div>
+            <p class="section-subtitle">
+                We are a team of student researchers from the Science, Technology, Engineering, and Mathematics (STEM) 
+                strand at Muntinlupa National High School.
+            </p>
+        </div>
+        
+        <div class="team-category">
+            <h3>Student Researchers</h3>
+            <div class="team-grid">
+                <div class="team-member">
+                    <div class="member-avatar">
+                        <i class="fas fa-user-graduate"></i>
+                    </div>
+                    <h4>Ralph Zantino M. Bawa</h4>
+                    <p>Student Researcher</p>
+                </div>
+                <div class="team-member">
+                    <div class="member-avatar">
+                        <i class="fas fa-user-graduate"></i>
+                    </div>
+                    <h4>Mark Vincent L. Aglibot</h4>
+                    <p>Student Researcher</p>
+                </div>
+                <div class="team-member">
+                    <div class="member-avatar">
+                        <i class="fas fa-user-graduate"></i>
+                    </div>
+                    <h4>Channdler P. Almodal</h4>
+                    <p>Student Researcher</p>
+                </div>
+                <div class="team-member">
+                    <div class="member-avatar">
+                        <i class="fas fa-user-graduate"></i>
+                    </div>
+                    <h4>Laurenz S. Nacis</h4>
+                    <p>Student Researcher</p>
+                </div>
+                <div class="team-member">
+                    <div class="member-avatar">
+                        <i class="fas fa-user-graduate"></i>
+                    </div>
+                    <h4>Carlo A. Salibay</h4>
+                    <p>Student Researcher</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="team-category">
+            <h3>Research Advisers</h3>
+            <div class="team-grid advisers">
+                <div class="team-member">
+                    <div class="member-avatar adviser">
+                        <i class="fas fa-chalkboard-teacher"></i>
+                    </div>
+                    <h4>Joanna Nichole P. Del Mundo</h4>
+                    <p>Research Adviser</p>
+                </div>
+                <div class="team-member">
+                    <div class="member-avatar adviser">
+                        <i class="fas fa-chalkboard-teacher"></i>
+                    </div>
+                    <h4>Princess C. La Rosa</h4>
+                    <p>Research Adviser</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Contact Section -->
+<section id="contact" class="contact-section">
+    <div class="container">
+        <div class="section-header">
+            <h2 class="section-title">Contact Us</h2>
+            <div class="title-underline"></div>
+        </div>
+        <div class="contact-content">
+            <div class="contact-info">
+                <div class="contact-item">
+                    <div class="contact-icon">
+                        <i class="fas fa-map-marker-alt"></i>
+                    </div>
+                    <div class="contact-details">
+                        <h4>Address</h4>
+                        <p>Muntinlupa National High School<br>NBP Reservation, Poblacion, Muntinlupa City</p>
+                    </div>
+                </div>
+                <div class="contact-item">
+                    <div class="contact-icon">
+                        <i class="fas fa-envelope"></i>
+                    </div>
+                    <div class="contact-details">
+                        <h4>Email</h4>
+                        <p>liwanag.project@mnhs.edu.ph</p>
+                    </div>
+                </div>
+                <div class="contact-item">
+                    <div class="contact-icon">
+                        <i class="fas fa-phone"></i>
+                    </div>
+                    <div class="contact-details">
+                        <h4>Phone</h4>
+                        <p>+63 (02) 8842-1234</p>
+                    </div>
+                </div>
+            </div>
+            <div class="contact-form-container">
+                <form class="contact-form" id="contactForm">
+                    <div class="form-group">
+                        <input type="text" id="name" name="name" placeholder="Your Name" required>
+                    </div>
+                    <div class="form-group">
+                        <input type="email" id="email" name="email" placeholder="Your Email" required>
+                    </div>
+                    <div class="form-group">
+                        <input type="text" id="subject" name="subject" placeholder="Subject" required>
+                    </div>
+                    <div class="form-group">
+                        <textarea id="message" name="message" placeholder="Your Message" rows="5" required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Send Message</button>
+                    <p class="contact-help">
+                        <strong>Need access to the dashboard?</strong> 
+                        <a href="{{ url_for('register') }}" class="auth-link">Create your account here</a>
+                    </p>
+                </form>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

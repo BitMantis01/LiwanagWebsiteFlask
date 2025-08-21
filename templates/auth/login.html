@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - LIWANAG</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <div class="logo">
+                    <h1>LIWANAG</h1>
+                    <p>Healthcare Dashboard</p>
+                </div>
+            </div>
+            
+            <div class="auth-form">
+                <h2>Sign In</h2>
+                <p class="auth-subtitle">Welcome back! Please sign in to your account.</p>
+                
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }}">
+                                <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-triangle' if category == 'warning' else 'times-circle' if category == 'danger' else 'info-circle' }}"></i>
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+                
+                <form method="POST" class="form">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="form-group">
+                        {{ form.username.label(class="form-label") }}
+                        {{ form.username(class="form-input" + (" error" if form.username.errors else "")) }}
+                        {% if form.username.errors %}
+                            <div class="error-message">
+                                {% for error in form.username.errors %}
+                                    <span>{{ error }}</span>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="form-group">
+                        {{ form.password.label(class="form-label") }}
+                        <div class="password-input">
+                            {{ form.password(class="form-input" + (" error" if form.password.errors else "")) }}
+                            <button type="button" class="password-toggle" onclick="togglePassword()">
+                                <i class="fas fa-eye" id="password-icon"></i>
+                            </button>
+                        </div>
+                        {% if form.password.errors %}
+                            <div class="error-message">
+                                {% for error in form.password.errors %}
+                                    <span>{{ error }}</span>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="form-group checkbox-group">
+                        {{ form.remember_me(class="checkbox") }}
+                        {{ form.remember_me.label(class="checkbox-label") }}
+                    </div>
+                    
+                    {{ form.submit(class="btn btn-primary btn-full") }}
+                </form>
+                
+                <div class="auth-footer">
+                    <p>Don't have an account? <a href="{{ url_for('register') }}" class="auth-link">Register Now</a></p>
+                    <p><a href="{{ url_for('home') }}" class="auth-link">← Back to Home</a></p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="auth-background">
+            <div class="auth-pattern"></div>
+        </div>
+    </div>
+    
+    <script>
+        function togglePassword() {
+            const passwordInput = document.getElementById('password');
+            const passwordIcon = document.getElementById('password-icon');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                passwordIcon.classList.remove('fa-eye');
+                passwordIcon.classList.add('fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                passwordIcon.classList.remove('fa-eye-slash');
+                passwordIcon.classList.add('fa-eye');
+            }
+        }
+        
+        // Auto-dismiss alerts after 5 seconds
+        setTimeout(function() {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(alert => {
+                alert.style.opacity = '0';
+                alert.style.transform = 'translateY(-20px)';
+                setTimeout(() => alert.remove(), 300);
+            });
+        }, 5000);
+    </script>
+</body>
+</html>

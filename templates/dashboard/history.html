@@ -1,0 +1,978 @@
+{% extends "dashboard/base.html" %}
+
+{% block page_title %}Session History{% endblock %}
+
+{% block content %}
+<div class="history-content">
+    <!-- Search and Filters -->
+    <div class="history-header">
+        <div class="header-content">
+            <h2>Session History</h2>
+            <p>View and manage your measurement sessions</p>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-primary" id="newSessionBtn">
+                <i class="fas fa-plus"></i>
+                New Session
+            </button>
+        </div>
+    </div>
+    
+    <div class="filters-card">
+        <div class="filters-content">
+            <div class="search-group">
+                <div class="search-input-wrapper">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="searchSessions" placeholder="Search sessions..." class="search-input">
+                </div>
+            </div>
+            
+            <div class="filter-controls">
+                <div class="filter-group">
+                    <label for="statusFilter">Status:</label>
+                    <select id="statusFilter" class="form-select">
+                        <option value="">All Sessions</option>
+                        <option value="active">Active</option>
+                        <option value="completed">Completed</option>
+                        <option value="cancelled">Cancelled</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="dateRangeFilter">Date Range:</label>
+                    <select id="dateRangeFilter" class="form-select">
+                        <option value="all">All Time</option>
+                        <option value="today">Today</option>
+                        <option value="week">This Week</option>
+                        <option value="month" selected>This Month</option>
+                        <option value="quarter">Last 3 Months</option>
+                        <option value="year">This Year</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="sortBy">Sort By:</label>
+                    <select id="sortBy" class="form-select">
+                        <option value="date_desc" selected>Date (Newest)</option>
+                        <option value="date_asc">Date (Oldest)</option>
+                        <option value="duration_desc">Duration (Longest)</option>
+                        <option value="duration_asc">Duration (Shortest)</option>
+                        <option value="measurements_desc">Most Measurements</option>
+                    </select>
+                </div>
+                
+                <button class="btn btn-outline" id="clearFiltersBtn">
+                    <i class="fas fa-times"></i>
+                    Clear
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Sessions Grid -->
+    <div class="sessions-grid" id="sessionsGrid">
+        {% for session in sessions %}
+        <div class="session-card" data-session-id="{{ session.id }}" data-status="{{ session.status }}">
+            <div class="session-header">
+                <div class="session-info">
+                    <h3>Session #{{ session.id }}</h3>
+                    <div class="session-date">
+                        {{ convert_timezone(session.created_at).strftime('%B %d, %Y') }}
+                    </div>
+                </div>
+                <div class="session-status">
+                    <span class="status-badge status-{{ session.status }}">
+                        {% if session.status == 'active' %}
+                            <i class="fas fa-play"></i> Active
+                        {% elif session.status == 'completed' %}
+                            <i class="fas fa-check"></i> Completed
+                        {% elif session.status == 'cancelled' %}
+                            <i class="fas fa-times"></i> Cancelled
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+            
+            <div class="session-details">
+                <div class="detail-row">
+                    <div class="detail-item">
+                        <i class="fas fa-clock"></i>
+                        <div class="detail-content">
+                            <span class="detail-label">Start Time</span>
+                            <span class="detail-value">{{ convert_timezone(session.created_at).strftime('%I:%M %p') }}</span>
+                        </div>
+                    </div>
+                    
+                    {% if session.completed_at %}
+                    <div class="detail-item">
+                        <i class="fas fa-stopwatch"></i>
+                        <div class="detail-content">
+                            <span class="detail-label">Duration</span>
+                            <span class="detail-value">
+                                {% if session.completed_at %}
+                                    {% set duration = session.completed_at - session.created_at %}
+                                    {{ duration.total_seconds() // 60 | int }}min
+                                {% else %}
+                                    In Progress
+                                {% endif %}
+                            </span>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="detail-row">
+                    <div class="detail-item">
+                        <i class="fas fa-chart-line"></i>
+                        <div class="detail-content">
+                            <span class="detail-label">Measurements</span>
+                            <span class="detail-value">{{ session.measurements|length }}</span>
+                        </div>
+                    </div>
+                    
+                    {% if session.measurements %}
+                    <div class="detail-item">
+                        <i class="fas fa-thermometer-half"></i>
+                        <div class="detail-content">
+                            <span class="detail-label">Last Reading</span>
+                            <span class="detail-value">
+                                {{ convert_timezone(session.measurements[-1].timestamp).strftime('%I:%M %p') }}
+                            </span>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                
+            </div>
+            
+            <div class="session-actions">
+                <a href="{{ url_for('view_session', session_id=session.id) }}" class="btn btn-primary btn-sm">
+                    <i class="fas fa-eye"></i>
+                    View Details
+                </a>
+                
+                {% if session.status == 'active' %}
+                <button class="btn btn-success btn-sm" data-action="continue" data-session-id="{{ session.id }}">
+                    <i class="fas fa-play"></i>
+                    Continue
+                </button>
+                {% endif %}
+                
+                <button class="btn btn-outline btn-sm" data-action="export" data-session-id="{{ session.id }}">
+                    <i class="fas fa-download"></i>
+                    Export
+                </button>
+                
+                <div class="dropdown">
+                    <button class="btn btn-outline btn-sm dropdown-toggle">
+                        <i class="fas fa-ellipsis-v"></i>
+                    </button>
+                    <div class="dropdown-menu">
+                        <a href="#" data-action="duplicate" data-session-id="{{ session.id }}">
+                            <i class="fas fa-copy"></i> Duplicate
+                        </a>
+                        {% if session.status == 'active' %}
+                        <a href="#" data-action="pause" data-session-id="{{ session.id }}">
+                            <i class="fas fa-pause"></i> Pause
+                        </a>
+                        <a href="#" data-action="complete" data-session-id="{{ session.id }}">
+                            <i class="fas fa-check"></i> Complete
+                        </a>
+                        {% endif %}
+                        <div class="dropdown-divider"></div>
+                        <a href="#" data-action="delete" data-session-id="{{ session.id }}" class="text-danger">
+                            <i class="fas fa-trash"></i> Delete
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="no-sessions" id="noSessionsMessage">
+            <div class="no-sessions-content">
+                <i class="fas fa-history"></i>
+                <h3>No Sessions Found</h3>
+                <p>You haven't started any measurement sessions yet.</p>
+                <button class="btn btn-primary" onclick="document.getElementById('newSessionBtn').click()">
+                    <i class="fas fa-plus"></i>
+                    Start Your First Session
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <!-- Pagination -->
+    {% if sessions_pagination and sessions_pagination.pages > 1 %}
+    <div class="pagination-container">
+        <div class="pagination-info">
+            Showing {{ sessions_pagination.per_page * (sessions_pagination.page - 1) + 1 }} to 
+            {{ sessions_pagination.per_page * sessions_pagination.page if sessions_pagination.page < sessions_pagination.pages else sessions_pagination.total }} 
+            of {{ sessions_pagination.total }} sessions
+        </div>
+        <div class="pagination">
+            {% if sessions_pagination.has_prev %}
+                <a href="{{ url_for('history', page=sessions_pagination.prev_num, **request.args) }}" class="page-btn">
+                    <i class="fas fa-chevron-left"></i>
+                </a>
+            {% endif %}
+            
+            {% for page_num in sessions_pagination.iter_pages() %}
+                {% if page_num %}
+                    {% if page_num != sessions_pagination.page %}
+                        <a href="{{ url_for('history', page=page_num, **request.args) }}" class="page-btn">{{ page_num }}</a>
+                    {% else %}
+                        <span class="page-btn active">{{ page_num }}</span>
+                    {% endif %}
+                {% else %}
+                    <span class="page-btn disabled">...</span>
+                {% endif %}
+            {% endfor %}
+            
+            {% if sessions_pagination.has_next %}
+                <a href="{{ url_for('history', page=sessions_pagination.next_num, **request.args) }}" class="page-btn">
+                    <i class="fas fa-chevron-right"></i>
+                </a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.history-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.header-content h2 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin-bottom: 0.5rem;
+}
+
+.header-content p {
+    color: var(--gray);
+    font-size: 0.95rem;
+    margin: 0;
+}
+
+.filters-card {
+    background: var(--white);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    border: 1px solid var(--light-gray);
+    overflow: hidden;
+}
+
+.filters-content {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.search-group {
+    display: flex;
+    gap: 1rem;
+}
+
+.search-input-wrapper {
+    position: relative;
+    flex: 1;
+    max-width: 400px;
+}
+
+.search-input-wrapper i {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--gray);
+    font-size: 0.9rem;
+}
+
+.search-input {
+    width: 100%;
+    padding: 0.75rem 1rem 0.75rem 2.5rem;
+    border: 2px solid var(--light-gray);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    transition: var(--transition);
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: var(--primary-blue);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.filter-controls {
+    display: flex;
+    gap: 1rem;
+    align-items: end;
+    flex-wrap: wrap;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.filter-group label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--gray);
+}
+
+.form-select {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--light-gray);
+    border-radius: 6px;
+    font-size: 0.875rem;
+    background: var(--white);
+    color: var(--text-dark);
+    min-width: 120px;
+}
+
+.sessions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+    gap: 1.5rem;
+}
+
+.session-card {
+    background: var(--white);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    border: 1px solid var(--light-gray);
+    overflow: visible;
+    transition: var(--transition);
+    position: relative;
+}
+
+.session-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.session-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--light-gray);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    background: linear-gradient(135deg, var(--off-white), rgba(96, 165, 250, 0.05));
+}
+
+.session-info h3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-dark);
+    margin-bottom: 0.25rem;
+}
+
+.session-date {
+    font-size: 0.875rem;
+    color: var(--gray);
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-active {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success);
+}
+
+.status-completed {
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--primary-blue);
+}
+
+.status-cancelled {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--danger);
+}
+
+.session-details {
+    padding: 1.5rem;
+}
+
+.detail-row {
+    display: flex;
+    gap: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.detail-row:last-child {
+    margin-bottom: 0;
+}
+
+.detail-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex: 1;
+}
+
+.detail-item i {
+    width: 16px;
+    color: var(--primary-blue);
+    font-size: 0.9rem;
+}
+
+.detail-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+}
+
+.detail-label {
+    font-size: 0.75rem;
+    color: var(--gray);
+    font-weight: 500;
+}
+
+.detail-value {
+    font-size: 0.875rem;
+    color: var(--text-dark);
+    font-weight: 600;
+}
+
+.session-notes {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    margin-top: 1rem;
+    padding: 1rem;
+    background: var(--off-white);
+    border-radius: 8px;
+    font-size: 0.875rem;
+    color: var(--gray);
+    line-height: 1.4;
+}
+
+.session-notes i {
+    color: var(--warning);
+    margin-top: 0.125rem;
+}
+
+.session-actions {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--light-gray);
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    flex-wrap: wrap;
+    background: var(--off-white);
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.8rem;
+    transition: var(--transition);
+    border: none;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.btn-sm {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.75rem;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary-blue), var(--secondary-blue));
+    color: var(--white);
+    box-shadow: var(--shadow);
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-lg);
+}
+
+.btn-success {
+    background: linear-gradient(135deg, var(--success), #059669);
+    color: var(--white);
+}
+
+.btn-outline {
+    background: transparent;
+    color: var(--gray);
+    border: 1px solid var(--light-gray);
+}
+
+.btn-outline:hover {
+    background: var(--off-white);
+    border-color: var(--primary-blue);
+    color: var(--primary-blue);
+}
+
+.dropdown {
+    position: relative;
+    z-index: 1;
+}
+
+.dropdown-toggle {
+    padding: 0.375rem 0.5rem;
+    min-width: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dropdown-toggle:hover {
+    background: var(--light-gray);
+    border-color: var(--primary-blue);
+    color: var(--primary-blue);
+}
+
+.dropdown-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: var(--white);
+    border: 1px solid var(--light-gray);
+    border-radius: 6px;
+    box-shadow: var(--shadow-lg);
+    min-width: 160px;
+    z-index: 9999;
+    display: none;
+    margin-top: 4px;
+}
+
+/* Ensure dropdown appears correctly on mobile */
+@media (max-width: 768px) {
+    .dropdown-menu {
+        right: -10px;
+        min-width: 140px;
+    }
+}
+
+.dropdown-menu a {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    color: var(--text-dark);
+    text-decoration: none;
+    font-size: 0.875rem;
+    transition: var(--transition);
+}
+
+.dropdown-menu a:hover {
+    background: var(--off-white);
+}
+
+.dropdown-menu a.text-danger {
+    color: var(--danger);
+}
+
+.dropdown-divider {
+    height: 1px;
+    background: var(--light-gray);
+    margin: 0.5rem 0;
+}
+
+.no-sessions {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 4rem 2rem;
+}
+
+.no-sessions-content {
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+.no-sessions-content i {
+    font-size: 4rem;
+    color: var(--light-gray);
+    margin-bottom: 1.5rem;
+}
+
+.no-sessions-content h3 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-dark);
+    margin-bottom: 0.75rem;
+}
+
+.no-sessions-content p {
+    color: var(--gray);
+    margin-bottom: 1.5rem;
+    line-height: 1.5;
+}
+
+.pagination-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem;
+    background: var(--white);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    border: 1px solid var(--light-gray);
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.pagination-info {
+    font-size: 0.875rem;
+    color: var(--gray);
+}
+
+.pagination {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.page-btn {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--light-gray);
+    background: var(--white);
+    color: var(--gray);
+    text-decoration: none;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    transition: var(--transition);
+}
+
+.page-btn:hover:not(.disabled):not(.active) {
+    background: var(--off-white);
+    border-color: var(--primary-blue);
+    color: var(--primary-blue);
+}
+
+.page-btn.active {
+    background: var(--primary-blue);
+    color: var(--white);
+    border-color: var(--primary-blue);
+}
+
+.page-btn.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+    .sessions-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .history-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .filter-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .filter-group {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+    
+    .detail-row {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .session-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .pagination-container {
+        flex-direction: column;
+        text-align: center;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    setupEventListeners();
+    setupDropdowns();
+});
+
+function setupEventListeners() {
+    // Search functionality
+    document.getElementById('searchSessions').addEventListener('input', filterSessions);
+    
+    // Filter controls
+    document.getElementById('statusFilter').addEventListener('change', filterSessions);
+    document.getElementById('dateRangeFilter').addEventListener('change', filterSessions);
+    document.getElementById('sortBy').addEventListener('change', sortSessions);
+    
+    // Clear filters
+    document.getElementById('clearFiltersBtn').addEventListener('click', clearAllFilters);
+    
+    // New session button
+    document.getElementById('newSessionBtn').addEventListener('click', function() {
+        window.location.href = '/new-session';
+    });
+    
+    // Session action buttons
+    document.addEventListener('click', function(e) {
+        const target = e.target.closest('[data-action]');
+        if (target) {
+            e.preventDefault();
+            const action = target.dataset.action;
+            const sessionId = target.dataset.sessionId;
+            
+            switch (action) {
+                case 'continue':
+                    continueSession(sessionId);
+                    break;
+                case 'export':
+                    exportSession(sessionId);
+                    break;
+                case 'duplicate':
+                    duplicateSession(sessionId);
+                    break;
+                case 'pause':
+                    pauseSession(sessionId);
+                    break;
+                case 'complete':
+                    completeSession(sessionId);
+                    break;
+                case 'delete':
+                    deleteSession(sessionId);
+                    break;
+            }
+        }
+    });
+}
+
+function setupDropdowns() {
+    document.querySelectorAll('.dropdown-toggle').forEach(toggle => {
+        toggle.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const dropdown = this.parentElement;
+            const menu = dropdown.querySelector('.dropdown-menu');
+            
+            // Close other dropdowns
+            document.querySelectorAll('.dropdown-menu').forEach(m => {
+                if (m !== menu) m.style.display = 'none';
+            });
+            
+            // Toggle current dropdown
+            const isVisible = menu.style.display === 'block';
+            menu.style.display = isVisible ? 'none' : 'block';
+            
+            // Adjust position if dropdown goes off-screen
+            if (!isVisible) {
+                const rect = menu.getBoundingClientRect();
+                const viewport = window.innerWidth;
+                
+                if (rect.right > viewport) {
+                    menu.style.right = '0px';
+                    menu.style.left = 'auto';
+                }
+            }
+        });
+    });
+    
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', function() {
+        document.querySelectorAll('.dropdown-menu').forEach(menu => {
+            menu.style.display = 'none';
+        });
+    });
+}
+
+function filterSessions() {
+    const searchTerm = document.getElementById('searchSessions').value.toLowerCase();
+    const statusFilter = document.getElementById('statusFilter').value;
+    const dateRangeFilter = document.getElementById('dateRangeFilter').value;
+    
+    const sessionCards = document.querySelectorAll('.session-card');
+    let visibleCount = 0;
+    
+    sessionCards.forEach(card => {
+        let show = true;
+        
+        // Search filter
+        if (searchTerm) {
+            const sessionText = card.textContent.toLowerCase();
+            if (!sessionText.includes(searchTerm)) {
+                show = false;
+            }
+        }
+        
+        // Status filter
+        if (statusFilter && show) {
+            const cardStatus = card.dataset.status;
+            if (cardStatus !== statusFilter) {
+                show = false;
+            }
+        }
+        
+        // Date range filter (simplified - in real app, would parse actual dates)
+        if (dateRangeFilter !== 'all' && show) {
+            // This would need actual date parsing logic
+            // For now, just keep all sessions visible
+        }
+        
+        card.style.display = show ? 'block' : 'none';
+        if (show) visibleCount++;
+    });
+    
+    // Show/hide no sessions message
+    const noSessionsMessage = document.getElementById('noSessionsMessage');
+    if (noSessionsMessage) {
+        noSessionsMessage.style.display = visibleCount === 0 ? 'block' : 'none';
+    }
+}
+
+function sortSessions() {
+    const sortBy = document.getElementById('sortBy').value;
+    const grid = document.getElementById('sessionsGrid');
+    const cards = Array.from(grid.querySelectorAll('.session-card'));
+    
+    cards.sort((a, b) => {
+        // This would need actual sorting logic based on data attributes
+        // For now, maintain current order
+        return 0;
+    });
+    
+    // Re-append sorted cards
+    cards.forEach(card => grid.appendChild(card));
+}
+
+function clearAllFilters() {
+    document.getElementById('searchSessions').value = '';
+    document.getElementById('statusFilter').value = '';
+    document.getElementById('dateRangeFilter').value = 'month';
+    document.getElementById('sortBy').value = 'date_desc';
+    filterSessions();
+}
+
+// Session action functions
+function continueSession(sessionId) {
+    if (confirm('Continue this session?')) {
+        window.location.href = `/session/${sessionId}/continue`;
+    }
+}
+
+function exportSession(sessionId) {
+    // Create download link for session data
+    const link = document.createElement('a');
+    link.href = `/api/sessions/${sessionId}/export`;
+    link.download = `session_${sessionId}_data.csv`;
+    link.click();
+}
+
+function duplicateSession(sessionId) {
+    if (confirm('Create a copy of this session?')) {
+        fetch(`/api/sessions/${sessionId}/duplicate`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error duplicating session: ' + data.message);
+            }
+        });
+    }
+}
+
+function pauseSession(sessionId) {
+    if (confirm('Pause this session?')) {
+        fetch(`/api/sessions/${sessionId}/pause`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error pausing session: ' + data.message);
+            }
+        });
+    }
+}
+
+function completeSession(sessionId) {
+    if (confirm('Mark this session as completed?')) {
+        fetch(`/api/sessions/${sessionId}/complete`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error completing session: ' + data.message);
+            }
+        });
+    }
+}
+
+function deleteSession(sessionId) {
+    if (confirm('Are you sure you want to delete this session? This action cannot be undone.')) {
+        fetch(`/api/sessions/${sessionId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error deleting session: ' + data.message);
+            }
+        });
+    }
+}
+</script>
+{% endblock %}
