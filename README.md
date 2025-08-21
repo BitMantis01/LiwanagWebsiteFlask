@@ -64,8 +64,7 @@ A comprehensive web application for diabetic foot assessment using Vibration Per
 
 ### 1. Clone the Repository
 ```bash
-git clone <repository-url>
-cd RalphWebsite
+git clone https://github.com/BitMantis01/LiwanagWebsiteFlask
 ```
 
 ### 2. Create Virtual Environment
