@@ -233,7 +233,7 @@ Get current temperature and SpO2 readings (requires login).
 ## 📁 Project Structure
 
 ```
-RalphWebsite/
+LiwanagWebsite/
 ├── app.py                  # Main Flask application
 ├── models.py              # Database models and schemas
 ├── forms.py               # WTForms for user input validation
