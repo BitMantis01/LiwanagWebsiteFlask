@@ -1109,3 +1109,360 @@ body {
         font-size: 0.9rem;
     }
 }
+
+/* Table-focused layout styles */
+.table-actions {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: var(--white);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+}
+
+.table-filters {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.table-filters label {
+    font-weight: 500;
+    color: var(--gray);
+    font-size: 0.875rem;
+}
+
+.table-filters select,
+.table-filters input {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--light-gray);
+    border-radius: 6px;
+    font-size: 0.875rem;
+    color: var(--text-dark);
+    background: var(--white);
+    transition: var(--transition);
+}
+
+.table-filters select:focus,
+.table-filters input:focus {
+    outline: none;
+    border-color: var(--primary-blue);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.detailed-table-container {
+    background: var(--white);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+}
+
+.detailed-table-header {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--light-gray);
+    background: var(--off-white);
+}
+
+.detailed-table-header h3 {
+    font-size: 1.125rem;
+    color: var(--text-dark);
+    margin: 0;
+}
+
+.detailed-measurements-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.detailed-measurements-table th {
+    background: var(--off-white);
+    padding: 1rem;
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-dark);
+    border-bottom: 2px solid var(--light-gray);
+    font-size: 0.875rem;
+}
+
+.detailed-measurements-table td {
+    padding: 1rem;
+    border-bottom: 1px solid var(--light-gray);
+    font-size: 0.875rem;
+}
+
+.detailed-measurements-table tbody tr:hover {
+    background: var(--off-white);
+}
+
+.status-normal {
+    color: var(--success);
+    font-weight: 600;
+}
+
+.status-elevated {
+    color: var(--warning);
+    font-weight: 600;
+}
+
+.status-high {
+    color: var(--danger);
+    font-weight: 600;
+}
+
+.summary-tables {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.summary-table-container {
+    background: var(--white);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+
+.summary-table-header {
+    padding: 1rem 1.5rem;
+    background: var(--light-blue);
+    color: var(--white);
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.summary-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.summary-table th,
+.summary-table td {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--light-gray);
+    font-size: 0.875rem;
+}
+
+.summary-table th {
+    background: var(--off-white);
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.summary-table .count {
+    font-weight: 600;
+    color: var(--primary-blue);
+}
+
+.chart-toggle-section {
+    margin: 1.5rem 0;
+    text-align: center;
+}
+
+.toggle-charts-btn {
+    background: var(--primary-blue);
+    color: var(--white);
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: var(--border-radius);
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.toggle-charts-btn:hover {
+    background: var(--secondary-blue);
+    transform: translateY(-1px);
+}
+
+.charts-section {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .summary-tables {
+        grid-template-columns: 1fr;
+    }
+    
+    .table-filters {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.75rem;
+    }
+    
+    .detailed-measurements-table {
+        font-size: 0.75rem;
+    }
+    
+    .detailed-measurements-table th,
+    .detailed-measurements-table td {
+        padding: 0.75rem 0.5rem;
+    }
+}
+
+/* Separate foot tables layout */
+.foot-tables-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.foot-table-section {
+    background: var(--white);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+
+.table-header {
+    padding: 1.5rem;
+    background: linear-gradient(135deg, var(--primary-blue), var(--secondary-blue));
+    color: var(--white);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.table-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.table-header h3 i {
+    font-size: 1.5rem;
+}
+
+.table-stats {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.count-badge {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.foot-table-section .table-container {
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+.foot-table-section .measurements-table {
+    margin-bottom: 0;
+}
+
+.foot-table-section .empty-state {
+    padding: 3rem 2rem;
+    text-align: center;
+    color: var(--gray);
+}
+
+.foot-table-section .empty-state .empty-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+.foot-table-section .empty-state h3 {
+    margin-bottom: 0.5rem;
+    font-size: 1.25rem;
+}
+
+.foot-table-section .empty-state p {
+    font-size: 0.875rem;
+}
+
+/* Status badge improvements */
+.status-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-badge.normal {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success);
+}
+
+.status-badge.elevated {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--warning);
+}
+
+.status-badge.high {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--danger);
+}
+
+.status-badge.unknown {
+    background: rgba(100, 116, 139, 0.1);
+    color: var(--gray);
+}
+
+/* Point display improvements */
+.point-foot {
+    display: block;
+    font-size: 0.75rem;
+    margin-top: 0.25rem;
+    opacity: 0.8;
+}
+
+.text-blue {
+    color: var(--primary-blue);
+}
+
+.text-green {
+    color: var(--success);
+}
+
+/* Responsive design for foot tables */
+@media (max-width: 1200px) {
+    .foot-tables-container {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .table-header {
+        padding: 1rem;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+    
+    .table-header h3 {
+        font-size: 1.125rem;
+    }
+    
+    .foot-table-section .table-container {
+        max-height: 400px;
+    }
+    
+    .measurements-table {
+        font-size: 0.75rem;
+    }
+    
+    .measurements-table th,
+    .measurements-table td {
+        padding: 0.75rem 0.5rem;
+    }
+}

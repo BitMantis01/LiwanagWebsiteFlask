@@ -25,7 +25,7 @@ class User(UserMixin, db.Model):
     remember_token = db.Column(db.String(255), nullable=True)
     
     # Relationships
-    sessions = db.relationship('Session', backref='user', lazy=True, cascade='all, delete-orphan')
+    measurements = db.relationship('Measurement', backref='user', lazy=True, cascade='all, delete-orphan')
     
     def set_password(self, password):
         """Hash and set password"""
@@ -38,11 +38,9 @@ class User(UserMixin, db.Model):
     
     def generate_profile_picture(self):
         """Generate a 64x64 circle profile picture based on username"""
-        # Create a simple avatar based on username hash
-        username_hash = hashlib.md5(self.username.encode()).hexdigest()
-        # This will be implemented with Pillow to create actual image
-        # For now, we'll store the hash and generate image in the route
-        self.profile_picture = username_hash
+        from utils import generate_avatar
+        # Generate the actual avatar image as base64 data
+        self.profile_picture = generate_avatar(self.username)
     
     def set_remember_token(self):
         """Generate and set a secure remember token"""
@@ -72,105 +70,11 @@ class User(UserMixin, db.Model):
             'last_login': self.last_login.isoformat() if self.last_login else None
         }
 
-class Session(db.Model):
-    __tablename__ = 'sessions'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    session_name = db.Column(db.String(100), nullable=False)
-    session_type = db.Column(db.String(50), default='manual')  # manual, auto, template
-    protocol = db.Column(db.String(50), nullable=True)  # diabetic_screening, quick_check, research
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
-    completed_at = db.Column(db.DateTime, nullable=True)
-    status = db.Column(db.String(20), default='active')  # active, completed, cancelled, paused
-    plantar_pressure_status = db.Column(db.String(20), default='Unknown')  # Low, Normal, High
-    notes = db.Column(db.Text, nullable=True)
-    expected_points = db.Column(db.JSON, nullable=True)  # List of expected measurement points
-    
-    # Relationships
-    measurements = db.relationship('Measurement', backref='session', lazy=True, cascade='all, delete-orphan')
-    
-    @property
-    def duration_minutes(self):
-        """Calculate session duration in minutes"""
-        if self.completed_at:
-            return int((self.completed_at - self.created_at).total_seconds() / 60)
-        else:
-            return int((datetime.now(timezone.utc) - self.created_at).total_seconds() / 60)
-    
-    @property
-    def progress_percentage(self):
-        """Calculate completion percentage based on expected points"""
-        if not self.expected_points:
-            return 100 if self.measurements else 0
-        
-        completed_points = set(m.point_name for m in self.measurements)
-        expected_set = set(self.expected_points)
-        
-        if not expected_set:
-            return 100
-        
-        return int((len(completed_points) / len(expected_set)) * 100)
-    
-    @property
-    def missing_points(self):
-        """Get list of missing measurement points"""
-        if not self.expected_points:
-            return []
-        
-        completed_points = set(m.point_name for m in self.measurements)
-        expected_set = set(self.expected_points)
-        
-        return list(expected_set - completed_points)
-    
-    def is_point_measured(self, point_name):
-        """Check if a specific point has been measured"""
-        return any(m.point_name == point_name for m in self.measurements)
-    
-    def get_latest_measurement_for_point(self, point_name):
-        """Get the most recent measurement for a specific point"""
-        measurements = [m for m in self.measurements if m.point_name == point_name]
-        return max(measurements, key=lambda x: x.timestamp) if measurements else None
-    
-    def mark_complete(self):
-        """Mark session as completed"""
-        self.status = 'completed'
-        self.completed_at = datetime.now(timezone.utc)
-        
-        # Auto-determine plantar pressure status based on measurements
-        if self.measurements:
-            avg_vpt = sum(m.vpt_voltage for m in self.measurements if m.vpt_voltage) / len([m for m in self.measurements if m.vpt_voltage])
-            if avg_vpt < 3.0:
-                self.plantar_pressure_status = 'Low'
-            elif avg_vpt > 7.0:
-                self.plantar_pressure_status = 'High'
-            else:
-                self.plantar_pressure_status = 'Normal'
-    
-    def to_dict(self):
-        """Convert session to dictionary"""
-        return {
-            'id': self.id,
-            'session_name': self.session_name,
-            'session_type': self.session_type,
-            'protocol': self.protocol,
-            'created_at': self.created_at.isoformat(),
-            'completed_at': self.completed_at.isoformat() if self.completed_at else None,
-            'status': self.status,
-            'plantar_pressure_status': self.plantar_pressure_status,
-            'notes': self.notes,
-            'measurement_count': len(self.measurements),
-            'duration_minutes': self.duration_minutes,
-            'progress_percentage': self.progress_percentage,
-            'missing_points': self.missing_points,
-            'expected_points': self.expected_points
-        }
-
 class Measurement(db.Model):
     __tablename__ = 'measurements'
     
     id = db.Column(db.Integer, primary_key=True)
-    session_id = db.Column(db.Integer, db.ForeignKey('sessions.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     point_name = db.Column(db.String(50), nullable=False)  # e.g., "Right Heel", "Left Big Toe"
     vpt_voltage = db.Column(db.Float, nullable=True)  # Vibration Perception Threshold in Volts
     temperature = db.Column(db.Float, nullable=True)  # Temperature in Celsius
@@ -178,7 +82,6 @@ class Measurement(db.Model):
     timestamp = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     notes = db.Column(db.Text, nullable=True)  # Optional notes for this measurement
     is_valid = db.Column(db.Boolean, default=True)  # Flag for data validity
-    retry_count = db.Column(db.Integer, default=0)  # Number of retries for this point
     
     def validate_data(self):
         """Validate measurement data ranges"""
@@ -221,7 +124,7 @@ class Measurement(db.Model):
         """Convert measurement to dictionary"""
         return {
             'id': self.id,
-            'session_id': self.session_id,
+            'user_id': self.user_id,
             'point_name': self.point_name,
             'vpt_voltage': self.vpt_voltage,
             'temperature': self.temperature,
@@ -229,7 +132,6 @@ class Measurement(db.Model):
             'timestamp': self.timestamp.isoformat(),
             'notes': self.notes,
             'is_valid': self.is_valid,
-            'retry_count': self.retry_count,
             'quality_score': self.quality_score
         }
 
@@ -281,49 +183,20 @@ MEASUREMENT_POINTS = {
     ]
 }
 
-# Session protocols with predefined measurement point sets
-SESSION_PROTOCOLS = {
-    'diabetic_screening': {
-        'name': 'Diabetic Foot Screening',
-        'description': 'Comprehensive diabetic foot assessment protocol',
-        'points': MEASUREMENT_POINTS['right'] + MEASUREMENT_POINTS['left'],
-        'required_measurements': ['vpt_voltage', 'temperature'],
-        'optional_measurements': ['spo2'],
-        'estimated_duration': 15  # minutes
-    },
-    'quick_check': {
-        'name': 'Quick Assessment',
-        'description': 'Basic assessment of key pressure points',
-        'points': [
-            'Right Heel', 'Right Big Toe', 'Right 1st MT',
-            'Left Heel', 'Left Big Toe', 'Left 1st MT'
-        ],
-        'required_measurements': ['vpt_voltage'],
-        'optional_measurements': ['temperature', 'spo2'],
-        'estimated_duration': 8
-    },
-    'research': {
-        'name': 'Research Protocol',
-        'description': 'Comprehensive measurement for research purposes',
-        'points': MEASUREMENT_POINTS['right'] + MEASUREMENT_POINTS['left'],
-        'required_measurements': ['vpt_voltage', 'temperature', 'spo2'],
-        'optional_measurements': [],
-        'estimated_duration': 20
-    },
-    'right_foot_only': {
-        'name': 'Right Foot Assessment',
-        'description': 'Assessment of right foot only',
-        'points': MEASUREMENT_POINTS['right'],
-        'required_measurements': ['vpt_voltage', 'temperature'],
-        'optional_measurements': ['spo2'],
-        'estimated_duration': 8
-    },
-    'left_foot_only': {
-        'name': 'Left Foot Assessment',
-        'description': 'Assessment of left foot only',
-        'points': MEASUREMENT_POINTS['left'],
-        'required_measurements': ['vpt_voltage', 'temperature'],
-        'optional_measurements': ['spo2'],
-        'estimated_duration': 8
-    }
+# Chart color definitions for consistent visualization
+CHART_COLORS = {
+    'right_heel': '#ef4444',      # Red
+    'right_instep': '#f59e0b',    # Amber  
+    'right_5th_mt': '#3b82f6',    # Blue
+    'right_3rd_mt': '#10b981',    # Emerald
+    'right_1st_mt': '#8b5cf6',    # Violet
+    'right_big_toe': '#f97316',   # Orange
+    'left_heel': '#dc2626',       # Red-600
+    'left_instep': '#d97706',     # Amber-600
+    'left_5th_mt': '#2563eb',     # Blue-600
+    'left_3rd_mt': '#059669',     # Emerald-600
+    'left_1st_mt': '#7c3aed',     # Violet-600
+    'left_big_toe': '#ea580c',    # Orange-600
+    'temperature': '#ef4444',     # Red for temperature
+    'spo2': '#8b5cf6'            # Violet for SpO2
 }

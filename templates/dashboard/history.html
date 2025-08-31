@@ -1,19 +1,19 @@
 {% extends "dashboard/base.html" %}
 
-{% block page_title %}Session History{% endblock %}
+{% block page_title %}Measurement History{% endblock %}
 
 {% block content %}
 <div class="history-content">
     <!-- Search and Filters -->
     <div class="history-header">
         <div class="header-content">
-            <h2>Session History</h2>
-            <p>View and manage your measurement sessions</p>
+            <h2>Measurement History</h2>
+            <p>View and manage your measurement records</p>
         </div>
         <div class="header-actions">
-            <button class="btn btn-primary" id="newSessionBtn">
-                <i class="fas fa-plus"></i>
-                New Session
+            <button class="btn btn-primary" id="exportAllBtn">
+                <i class="fas fa-download"></i>
+                Export All Data
             </button>
         </div>
     </div>
@@ -23,18 +23,27 @@
             <div class="search-group">
                 <div class="search-input-wrapper">
                     <i class="fas fa-search"></i>
-                    <input type="text" id="searchSessions" placeholder="Search sessions..." class="search-input">
+                    <input type="text" id="searchMeasurements" placeholder="Search measurements..." class="search-input">
                 </div>
             </div>
             
             <div class="filter-controls">
                 <div class="filter-group">
-                    <label for="statusFilter">Status:</label>
-                    <select id="statusFilter" class="form-select">
-                        <option value="">All Sessions</option>
-                        <option value="active">Active</option>
-                        <option value="completed">Completed</option>
-                        <option value="cancelled">Cancelled</option>
+                    <label for="pointFilter">Measurement Point:</label>
+                    <select id="pointFilter" class="form-select">
+                        <option value="">All Points</option>
+                        <option value="Right Heel">Right Heel</option>
+                        <option value="Right In Step">Right In Step</option>
+                        <option value="Right 5th MT">Right 5th MT</option>
+                        <option value="Right 3rd MT">Right 3rd MT</option>
+                        <option value="Right 1st MT">Right 1st MT</option>
+                        <option value="Right Big Toe">Right Big Toe</option>
+                        <option value="Left Heel">Left Heel</option>
+                        <option value="Left In Step">Left In Step</option>
+                        <option value="Left 5th MT">Left 5th MT</option>
+                        <option value="Left 3rd MT">Left 3rd MT</option>
+                        <option value="Left 1st MT">Left 1st MT</option>
+                        <option value="Left Big Toe">Left Big Toe</option>
                     </select>
                 </div>
                 
@@ -55,9 +64,9 @@
                     <select id="sortBy" class="form-select">
                         <option value="date_desc" selected>Date (Newest)</option>
                         <option value="date_asc">Date (Oldest)</option>
-                        <option value="duration_desc">Duration (Longest)</option>
-                        <option value="duration_asc">Duration (Shortest)</option>
-                        <option value="measurements_desc">Most Measurements</option>
+                        <option value="point">Measurement Point</option>
+                        <option value="vpt_desc">VPT (Highest)</option>
+                        <option value="vpt_asc">VPT (Lowest)</option>
                     </select>
                 </div>
                 
@@ -69,96 +78,82 @@
         </div>
     </div>
     
-    <!-- Sessions Grid -->
-    <div class="sessions-grid" id="sessionsGrid">
-        {% for session in sessions %}
-        <div class="session-card" data-session-id="{{ session.id }}" data-status="{{ session.status }}">
-            <div class="session-header">
-                <div class="session-info">
-                    <h3>Session #{{ session.id }}</h3>
-                    <div class="session-date">
-                        {{ convert_timezone(session.created_at).strftime('%B %d, %Y') }}
+    <!-- Measurements Grid -->
+    <div class="measurements-grid" id="measurementsGrid">
+        {% for measurement in measurements %}
+        <div class="measurement-card" data-measurement-id="{{ measurement.id }}" data-point="{{ measurement.point_name }}">
+            <div class="measurement-header">
+                <div class="measurement-info">
+                    <h3>{{ measurement.point_name }}</h3>
+                    <div class="measurement-date">
+                        {{ convert_timezone(measurement.timestamp).strftime('%B %d, %Y') }}
                     </div>
                 </div>
-                <div class="session-status">
-                    <span class="status-badge status-{{ session.status }}">
-                        {% if session.status == 'active' %}
-                            <i class="fas fa-play"></i> Active
-                        {% elif session.status == 'completed' %}
-                            <i class="fas fa-check"></i> Completed
-                        {% elif session.status == 'cancelled' %}
-                            <i class="fas fa-times"></i> Cancelled
-                        {% endif %}
+                <div class="measurement-type">
+                    <span class="type-badge">
+                        <i class="fas fa-bolt"></i> VPT
                     </span>
                 </div>
             </div>
             
-            <div class="session-details">
+            <div class="measurement-details">
                 <div class="detail-row">
                     <div class="detail-item">
                         <i class="fas fa-clock"></i>
                         <div class="detail-content">
-                            <span class="detail-label">Start Time</span>
-                            <span class="detail-value">{{ convert_timezone(session.created_at).strftime('%I:%M %p') }}</span>
+                            <span class="detail-label">Time</span>
+                            <span class="detail-value">{{ convert_timezone(measurement.timestamp).strftime('%I:%M %p') }}</span>
                         </div>
                     </div>
                     
-                    {% if session.completed_at %}
+                    {% if measurement.vpt_voltage %}
                     <div class="detail-item">
-                        <i class="fas fa-stopwatch"></i>
+                        <i class="fas fa-bolt"></i>
                         <div class="detail-content">
-                            <span class="detail-label">Duration</span>
-                            <span class="detail-value">
-                                {% if session.completed_at %}
-                                    {% set duration = session.completed_at - session.created_at %}
-                                    {{ duration.total_seconds() // 60 | int }}min
-                                {% else %}
-                                    In Progress
-                                {% endif %}
-                            </span>
+                            <span class="detail-label">VPT Voltage</span>
+                            <span class="detail-value">{{ measurement.vpt_voltage }}V</span>
                         </div>
                     </div>
                     {% endif %}
                 </div>
                 
                 <div class="detail-row">
-                    <div class="detail-item">
-                        <i class="fas fa-chart-line"></i>
-                        <div class="detail-content">
-                            <span class="detail-label">Measurements</span>
-                            <span class="detail-value">{{ session.measurements|length }}</span>
-                        </div>
-                    </div>
-                    
-                    {% if session.measurements %}
+                    {% if measurement.temperature %}
                     <div class="detail-item">
                         <i class="fas fa-thermometer-half"></i>
                         <div class="detail-content">
-                            <span class="detail-label">Last Reading</span>
-                            <span class="detail-value">
-                                {{ convert_timezone(session.measurements[-1].timestamp).strftime('%I:%M %p') }}
-                            </span>
+                            <span class="detail-label">Temperature</span>
+                            <span class="detail-value">{{ measurement.temperature }}°C</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if measurement.spo2 %}
+                    <div class="detail-item">
+                        <i class="fas fa-heart"></i>
+                        <div class="detail-content">
+                            <span class="detail-label">SpO2</span>
+                            <span class="detail-value">{{ measurement.spo2 }}%</span>
                         </div>
                     </div>
                     {% endif %}
                 </div>
                 
+                {% if measurement.notes %}
+                <div class="measurement-notes">
+                    <i class="fas fa-sticky-note"></i>
+                    <span>{{ measurement.notes }}</span>
+                </div>
+                {% endif %}
             </div>
             
-            <div class="session-actions">
-                <a href="{{ url_for('view_session', session_id=session.id) }}" class="btn btn-primary btn-sm">
+            <div class="measurement-actions">
+                <a href="/measurement/{{ measurement.id }}" class="btn btn-primary btn-sm">
                     <i class="fas fa-eye"></i>
                     View Details
                 </a>
                 
-                {% if session.status == 'active' %}
-                <button class="btn btn-success btn-sm" data-action="continue" data-session-id="{{ session.id }}">
-                    <i class="fas fa-play"></i>
-                    Continue
-                </button>
-                {% endif %}
-                
-                <button class="btn btn-outline btn-sm" data-action="export" data-session-id="{{ session.id }}">
+                <button class="btn btn-outline btn-sm" data-action="export" data-measurement-id="{{ measurement.id }}">
                     <i class="fas fa-download"></i>
                     Export
                 </button>
@@ -168,19 +163,17 @@
                         <i class="fas fa-ellipsis-v"></i>
                     </button>
                     <div class="dropdown-menu">
-                        <a href="#" data-action="duplicate" data-session-id="{{ session.id }}">
-                            <i class="fas fa-copy"></i> Duplicate
+                        {% if measurement.notes %}
+                        <a href="#" data-action="edit-notes" data-measurement-id="{{ measurement.id }}">
+                            <i class="fas fa-edit"></i> Edit Notes
                         </a>
-                        {% if session.status == 'active' %}
-                        <a href="#" data-action="pause" data-session-id="{{ session.id }}">
-                            <i class="fas fa-pause"></i> Pause
-                        </a>
-                        <a href="#" data-action="complete" data-session-id="{{ session.id }}">
-                            <i class="fas fa-check"></i> Complete
+                        {% else %}
+                        <a href="#" data-action="add-notes" data-measurement-id="{{ measurement.id }}">
+                            <i class="fas fa-plus"></i> Add Notes
                         </a>
                         {% endif %}
                         <div class="dropdown-divider"></div>
-                        <a href="#" data-action="delete" data-session-id="{{ session.id }}" class="text-danger">
+                        <a href="#" data-action="delete" data-measurement-id="{{ measurement.id }}" class="text-danger">
                             <i class="fas fa-trash"></i> Delete
                         </a>
                     </div>
@@ -188,14 +181,14 @@
             </div>
         </div>
         {% else %}
-        <div class="no-sessions" id="noSessionsMessage">
-            <div class="no-sessions-content">
-                <i class="fas fa-history"></i>
-                <h3>No Sessions Found</h3>
-                <p>You haven't started any measurement sessions yet.</p>
-                <button class="btn btn-primary" onclick="document.getElementById('newSessionBtn').click()">
-                    <i class="fas fa-plus"></i>
-                    Start Your First Session
+        <div class="no-measurements" id="noMeasurementsMessage">
+            <div class="no-measurements-content">
+                <i class="fas fa-chart-line"></i>
+                <h3>No Measurements Found</h3>
+                <p>You haven't taken any measurements yet.</p>
+                <button class="btn btn-primary" onclick="window.location.href='/my-data'">
+                    <i class="fas fa-chart-bar"></i>
+                    View Dashboard
                 </button>
             </div>
         </div>
@@ -203,23 +196,23 @@
     </div>
     
     <!-- Pagination -->
-    {% if sessions_pagination and sessions_pagination.pages > 1 %}
+    {% if measurements_pagination and measurements_pagination.pages > 1 %}
     <div class="pagination-container">
         <div class="pagination-info">
-            Showing {{ sessions_pagination.per_page * (sessions_pagination.page - 1) + 1 }} to 
-            {{ sessions_pagination.per_page * sessions_pagination.page if sessions_pagination.page < sessions_pagination.pages else sessions_pagination.total }} 
-            of {{ sessions_pagination.total }} sessions
+            Showing {{ measurements_pagination.per_page * (measurements_pagination.page - 1) + 1 }} to 
+            {{ measurements_pagination.per_page * measurements_pagination.page if measurements_pagination.page < measurements_pagination.pages else measurements_pagination.total }} 
+            of {{ measurements_pagination.total }} measurements
         </div>
         <div class="pagination">
-            {% if sessions_pagination.has_prev %}
-                <a href="{{ url_for('history', page=sessions_pagination.prev_num, **request.args) }}" class="page-btn">
+            {% if measurements_pagination.has_prev %}
+                <a href="{{ url_for('history', page=measurements_pagination.prev_num, **request.args) }}" class="page-btn">
                     <i class="fas fa-chevron-left"></i>
                 </a>
             {% endif %}
             
-            {% for page_num in sessions_pagination.iter_pages() %}
+            {% for page_num in measurements_pagination.iter_pages() %}
                 {% if page_num %}
-                    {% if page_num != sessions_pagination.page %}
+                    {% if page_num != measurements_pagination.page %}
                         <a href="{{ url_for('history', page=page_num, **request.args) }}" class="page-btn">{{ page_num }}</a>
                     {% else %}
                         <span class="page-btn active">{{ page_num }}</span>
@@ -229,8 +222,8 @@
                 {% endif %}
             {% endfor %}
             
-            {% if sessions_pagination.has_next %}
-                <a href="{{ url_for('history', page=sessions_pagination.next_num, **request.args) }}" class="page-btn">
+            {% if measurements_pagination.has_next %}
+                <a href="{{ url_for('history', page=measurements_pagination.next_num, **request.args) }}" class="page-btn">
                     <i class="fas fa-chevron-right"></i>
                 </a>
             {% endif %}
@@ -346,13 +339,13 @@
     min-width: 120px;
 }
 
-.sessions-grid {
+.measurements-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
     gap: 1.5rem;
 }
 
-.session-card {
+.measurement-card {
     background: var(--white);
     border-radius: var(--border-radius);
     box-shadow: var(--shadow);
@@ -362,12 +355,12 @@
     position: relative;
 }
 
-.session-card:hover {
+.measurement-card:hover {
     transform: translateY(-2px);
     box-shadow: var(--shadow-lg);
 }
 
-.session-header {
+.measurement-header {
     padding: 1.5rem;
     border-bottom: 1px solid var(--light-gray);
     display: flex;
@@ -376,19 +369,19 @@
     background: linear-gradient(135deg, var(--off-white), rgba(96, 165, 250, 0.05));
 }
 
-.session-info h3 {
+.measurement-info h3 {
     font-size: 1.125rem;
     font-weight: 600;
     color: var(--text-dark);
     margin-bottom: 0.25rem;
 }
 
-.session-date {
+.measurement-date {
     font-size: 0.875rem;
     color: var(--gray);
 }
 
-.status-badge {
+.type-badge {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
@@ -398,24 +391,11 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--warning);
 }
 
-.status-active {
-    background: rgba(16, 185, 129, 0.1);
-    color: var(--success);
-}
-
-.status-completed {
-    background: rgba(59, 130, 246, 0.1);
-    color: var(--primary-blue);
-}
-
-.status-cancelled {
-    background: rgba(239, 68, 68, 0.1);
-    color: var(--danger);
-}
-
-.session-details {
+.measurement-details {
     padding: 1.5rem;
 }
 
@@ -460,7 +440,7 @@
     font-weight: 600;
 }
 
-.session-notes {
+.measurement-notes {
     display: flex;
     align-items: flex-start;
     gap: 0.75rem;
@@ -473,12 +453,12 @@
     line-height: 1.4;
 }
 
-.session-notes i {
+.measurement-notes i {
     color: var(--warning);
     margin-top: 0.125rem;
 }
 
-.session-actions {
+.measurement-actions {
     padding: 1rem 1.5rem;
     border-top: 1px solid var(--light-gray);
     display: flex;
@@ -517,11 +497,6 @@
 .btn-primary:hover {
     transform: translateY(-1px);
     box-shadow: var(--shadow-lg);
-}
-
-.btn-success {
-    background: linear-gradient(135deg, var(--success), #059669);
-    color: var(--white);
 }
 
 .btn-outline {
@@ -569,14 +544,6 @@
     margin-top: 4px;
 }
 
-/* Ensure dropdown appears correctly on mobile */
-@media (max-width: 768px) {
-    .dropdown-menu {
-        right: -10px;
-        min-width: 140px;
-    }
-}
-
 .dropdown-menu a {
     display: flex;
     align-items: center;
@@ -602,31 +569,31 @@
     margin: 0.5rem 0;
 }
 
-.no-sessions {
+.no-measurements {
     grid-column: 1 / -1;
     text-align: center;
     padding: 4rem 2rem;
 }
 
-.no-sessions-content {
+.no-measurements-content {
     max-width: 400px;
     margin: 0 auto;
 }
 
-.no-sessions-content i {
+.no-measurements-content i {
     font-size: 4rem;
     color: var(--light-gray);
     margin-bottom: 1.5rem;
 }
 
-.no-sessions-content h3 {
+.no-measurements-content h3 {
     font-size: 1.5rem;
     font-weight: 600;
     color: var(--text-dark);
     margin-bottom: 0.75rem;
 }
 
-.no-sessions-content p {
+.no-measurements-content p {
     color: var(--gray);
     margin-bottom: 1.5rem;
     line-height: 1.5;
@@ -688,7 +655,7 @@
 }
 
 @media (max-width: 768px) {
-    .sessions-grid {
+    .measurements-grid {
         grid-template-columns: 1fr;
     }
     
@@ -713,7 +680,7 @@
         gap: 1rem;
     }
     
-    .session-actions {
+    .measurement-actions {
         flex-direction: column;
         align-items: stretch;
     }
@@ -733,47 +700,41 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function setupEventListeners() {
     // Search functionality
-    document.getElementById('searchSessions').addEventListener('input', filterSessions);
+    document.getElementById('searchMeasurements').addEventListener('input', filterMeasurements);
     
     // Filter controls
-    document.getElementById('statusFilter').addEventListener('change', filterSessions);
-    document.getElementById('dateRangeFilter').addEventListener('change', filterSessions);
-    document.getElementById('sortBy').addEventListener('change', sortSessions);
+    document.getElementById('pointFilter').addEventListener('change', filterMeasurements);
+    document.getElementById('dateRangeFilter').addEventListener('change', filterMeasurements);
+    document.getElementById('sortBy').addEventListener('change', sortMeasurements);
     
     // Clear filters
     document.getElementById('clearFiltersBtn').addEventListener('click', clearAllFilters);
     
-    // New session button
-    document.getElementById('newSessionBtn').addEventListener('click', function() {
-        window.location.href = '/new-session';
+    // Export all button
+    document.getElementById('exportAllBtn').addEventListener('click', function() {
+        window.location.href = '/api/measurements/export';
     });
     
-    // Session action buttons
+    // Measurement action buttons
     document.addEventListener('click', function(e) {
         const target = e.target.closest('[data-action]');
         if (target) {
             e.preventDefault();
             const action = target.dataset.action;
-            const sessionId = target.dataset.sessionId;
+            const measurementId = target.dataset.measurementId;
             
             switch (action) {
-                case 'continue':
-                    continueSession(sessionId);
-                    break;
                 case 'export':
-                    exportSession(sessionId);
+                    exportMeasurement(measurementId);
                     break;
-                case 'duplicate':
-                    duplicateSession(sessionId);
+                case 'add-notes':
+                    addNotes(measurementId);
                     break;
-                case 'pause':
-                    pauseSession(sessionId);
-                    break;
-                case 'complete':
-                    completeSession(sessionId);
+                case 'edit-notes':
+                    editNotes(measurementId);
                     break;
                 case 'delete':
-                    deleteSession(sessionId);
+                    deleteMeasurement(measurementId);
                     break;
             }
         }
@@ -817,29 +778,29 @@ function setupDropdowns() {
     });
 }
 
-function filterSessions() {
-    const searchTerm = document.getElementById('searchSessions').value.toLowerCase();
-    const statusFilter = document.getElementById('statusFilter').value;
+function filterMeasurements() {
+    const searchTerm = document.getElementById('searchMeasurements').value.toLowerCase();
+    const pointFilter = document.getElementById('pointFilter').value;
     const dateRangeFilter = document.getElementById('dateRangeFilter').value;
     
-    const sessionCards = document.querySelectorAll('.session-card');
+    const measurementCards = document.querySelectorAll('.measurement-card');
     let visibleCount = 0;
     
-    sessionCards.forEach(card => {
+    measurementCards.forEach(card => {
         let show = true;
         
         // Search filter
         if (searchTerm) {
-            const sessionText = card.textContent.toLowerCase();
-            if (!sessionText.includes(searchTerm)) {
+            const measurementText = card.textContent.toLowerCase();
+            if (!measurementText.includes(searchTerm)) {
                 show = false;
             }
         }
         
-        // Status filter
-        if (statusFilter && show) {
-            const cardStatus = card.dataset.status;
-            if (cardStatus !== statusFilter) {
+        // Point filter
+        if (pointFilter && show) {
+            const cardPoint = card.dataset.point;
+            if (cardPoint !== pointFilter) {
                 show = false;
             }
         }
@@ -847,24 +808,24 @@ function filterSessions() {
         // Date range filter (simplified - in real app, would parse actual dates)
         if (dateRangeFilter !== 'all' && show) {
             // This would need actual date parsing logic
-            // For now, just keep all sessions visible
+            // For now, just keep all measurements visible
         }
         
         card.style.display = show ? 'block' : 'none';
         if (show) visibleCount++;
     });
     
-    // Show/hide no sessions message
-    const noSessionsMessage = document.getElementById('noSessionsMessage');
-    if (noSessionsMessage) {
-        noSessionsMessage.style.display = visibleCount === 0 ? 'block' : 'none';
+    // Show/hide no measurements message
+    const noMeasurementsMessage = document.getElementById('noMeasurementsMessage');
+    if (noMeasurementsMessage) {
+        noMeasurementsMessage.style.display = visibleCount === 0 ? 'block' : 'none';
     }
 }
 
-function sortSessions() {
+function sortMeasurements() {
     const sortBy = document.getElementById('sortBy').value;
-    const grid = document.getElementById('sessionsGrid');
-    const cards = Array.from(grid.querySelectorAll('.session-card'));
+    const grid = document.getElementById('measurementsGrid');
+    const cards = Array.from(grid.querySelectorAll('.measurement-card'));
     
     cards.sort((a, b) => {
         // This would need actual sorting logic based on data attributes
@@ -877,88 +838,58 @@ function sortSessions() {
 }
 
 function clearAllFilters() {
-    document.getElementById('searchSessions').value = '';
-    document.getElementById('statusFilter').value = '';
+    document.getElementById('searchMeasurements').value = '';
+    document.getElementById('pointFilter').value = '';
     document.getElementById('dateRangeFilter').value = 'month';
     document.getElementById('sortBy').value = 'date_desc';
-    filterSessions();
+    filterMeasurements();
 }
 
-// Session action functions
-function continueSession(sessionId) {
-    if (confirm('Continue this session?')) {
-        window.location.href = `/session/${sessionId}/continue`;
-    }
-}
-
-function exportSession(sessionId) {
-    // Create download link for session data
+// Measurement action functions
+function exportMeasurement(measurementId) {
+    // Create download link for measurement data
     const link = document.createElement('a');
-    link.href = `/api/sessions/${sessionId}/export`;
-    link.download = `session_${sessionId}_data.csv`;
+    link.href = `/api/measurements/${measurementId}/export`;
+    link.download = `measurement_${measurementId}_data.csv`;
     link.click();
 }
 
-function duplicateSession(sessionId) {
-    if (confirm('Create a copy of this session?')) {
-        fetch(`/api/sessions/${sessionId}/duplicate`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                location.reload();
-            } else {
-                alert('Error duplicating session: ' + data.message);
-            }
-        });
+function addNotes(measurementId) {
+    const notes = prompt('Add notes for this measurement:');
+    if (notes !== null) {
+        updateMeasurementNotes(measurementId, notes);
     }
 }
 
-function pauseSession(sessionId) {
-    if (confirm('Pause this session?')) {
-        fetch(`/api/sessions/${sessionId}/pause`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                location.reload();
-            } else {
-                alert('Error pausing session: ' + data.message);
-            }
-        });
+function editNotes(measurementId) {
+    // Get current notes from the card (simplified)
+    const notes = prompt('Edit notes for this measurement:');
+    if (notes !== null) {
+        updateMeasurementNotes(measurementId, notes);
     }
 }
 
-function completeSession(sessionId) {
-    if (confirm('Mark this session as completed?')) {
-        fetch(`/api/sessions/${sessionId}/complete`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                location.reload();
-            } else {
-                alert('Error completing session: ' + data.message);
-            }
-        });
-    }
+function updateMeasurementNotes(measurementId, notes) {
+    fetch(`/api/measurements/${measurementId}/notes`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ notes: notes })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error updating notes: ' + data.message);
+        }
+    });
 }
 
-function deleteSession(sessionId) {
-    if (confirm('Are you sure you want to delete this session? This action cannot be undone.')) {
-        fetch(`/api/sessions/${sessionId}`, {
+function deleteMeasurement(measurementId) {
+    if (confirm('Are you sure you want to delete this measurement? This action cannot be undone.')) {
+        fetch(`/api/measurements/${measurementId}`, {
             method: 'DELETE',
             headers: {
                 'Content-Type': 'application/json',
@@ -969,7 +900,7 @@ function deleteSession(sessionId) {
             if (data.success) {
                 location.reload();
             } else {
-                alert('Error deleting session: ' + data.message);
+                alert('Error deleting measurement: ' + data.message);
             }
         });
     }

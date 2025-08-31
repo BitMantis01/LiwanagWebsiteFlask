@@ -1,0 +1,862 @@
+{% extends "dashboard/base.html" %}
+
+{% block page_title %}Measurement Details{% endblock %}
+
+{% block content %}
+<div class="measurement-detail-content">
+    <!-- Header Section -->
+    <div class="detail-header">
+        <div class="header-info">
+            <div class="breadcrumb">
+                <a href="/history" class="breadcrumb-link">
+                    <i class="fas fa-history"></i>
+                    History
+                </a>
+                <span class="breadcrumb-separator">/</span>
+                <span class="breadcrumb-current">Measurement Details</span>
+            </div>
+            <h1>{{ measurement.point_name }} Measurement</h1>
+            <div class="measurement-meta">
+                <span class="meta-item">
+                    <i class="fas fa-calendar"></i>
+                    {{ convert_timezone(measurement.timestamp).strftime('%B %d, %Y') }}
+                </span>
+                <span class="meta-item">
+                    <i class="fas fa-clock"></i>
+                    {{ convert_timezone(measurement.timestamp).strftime('%I:%M %p') }}
+                </span>
+                <span class="meta-item">
+                    <i class="fas fa-user"></i>
+                    ID: {{ measurement.id }}
+                </span>
+            </div>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-outline" onclick="window.print()">
+                <i class="fas fa-print"></i>
+                Print
+            </button>
+            <button class="btn btn-primary" id="exportBtn">
+                <i class="fas fa-download"></i>
+                Export
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="detail-grid">
+        <!-- Measurement Overview Card -->
+        <div class="detail-card measurement-overview">
+            <div class="card-header">
+                <h3>
+                    <i class="fas fa-bolt"></i>
+                    Measurement Overview
+                </h3>
+            </div>
+            <div class="card-content">
+                <div class="overview-stats">
+                    <div class="stat-item primary">
+                        <div class="stat-icon">
+                            <i class="fas fa-bolt"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-label">VPT Voltage</div>
+                            <div class="stat-value">
+                                {{ measurement.vpt_voltage if measurement.vpt_voltage else 'N/A' }}
+                                {% if measurement.vpt_voltage %}V{% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-item">
+                        <div class="stat-icon temp">
+                            <i class="fas fa-thermometer-half"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-label">Temperature</div>
+                            <div class="stat-value">
+                                {{ measurement.temperature if measurement.temperature else 'N/A' }}
+                                {% if measurement.temperature %}°C{% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-item">
+                        <div class="stat-icon spo2">
+                            <i class="fas fa-heart"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-label">SpO2</div>
+                            <div class="stat-value">
+                                {{ measurement.spo2 if measurement.spo2 else 'N/A' }}
+                                {% if measurement.spo2 %}%{% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="measurement-location">
+                    <h4>Measurement Point</h4>
+                    <div class="location-info">
+                        <div class="location-badge">
+                            <i class="fas fa-map-marker-alt"></i>
+                            {{ measurement.point_name }}
+                        </div>
+                        <div class="location-description">
+                            {% if "Right" in measurement.point_name %}
+                                Right foot measurement point
+                            {% elif "Left" in measurement.point_name %}
+                                Left foot measurement point
+                            {% else %}
+                                Measurement point
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Device Information Card -->
+        <div class="detail-card device-info">
+            <div class="card-header">
+                <h3>
+                    <i class="fas fa-microchip"></i>
+                    Device Information
+                </h3>
+            </div>
+            <div class="card-content">
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">Device</div>
+                        <div class="info-value">LIWANAG VPT Sensor</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Measurement Type</div>
+                        <div class="info-value">Vibration Perception Threshold</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Data Source</div>
+                        <div class="info-value">API Collection</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Quality</div>
+                        <div class="info-value">
+                            <span class="quality-badge good">
+                                <i class="fas fa-check-circle"></i>
+                                Valid
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analysis Results Card -->
+        <div class="detail-card analysis-results">
+            <div class="card-header">
+                <h3>
+                    <i class="fas fa-chart-line"></i>
+                    Analysis Results
+                </h3>
+            </div>
+            <div class="card-content">
+                {% if measurement.vpt_voltage %}
+                <div class="analysis-section">
+                    <h4>VPT Assessment</h4>
+                    <div class="assessment-result">
+                        {% set vpt_value = measurement.vpt_voltage %}
+                        {% if vpt_value < 10 %}
+                            <div class="result-badge normal">
+                                <i class="fas fa-check-circle"></i>
+                                Normal Sensation
+                            </div>
+                            <p>VPT reading indicates normal vibration perception.</p>
+                        {% elif vpt_value < 25 %}
+                            <div class="result-badge warning">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                Mild Neuropathy Risk
+                            </div>
+                            <p>VPT reading suggests possible early neuropathy. Consider follow-up testing.</p>
+                        {% else %}
+                            <div class="result-badge danger">
+                                <i class="fas fa-exclamation-circle"></i>
+                                Significant Neuropathy Risk
+                            </div>
+                            <p>VPT reading indicates potential significant neuropathy. Medical consultation recommended.</p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if measurement.temperature %}
+                <div class="analysis-section">
+                    <h4>Temperature Assessment</h4>
+                    <div class="assessment-result">
+                        {% set temp_value = measurement.temperature %}
+                        {% if temp_value >= 36.0 and temp_value <= 37.5 %}
+                            <div class="result-badge normal">
+                                <i class="fas fa-check-circle"></i>
+                                Normal Temperature
+                            </div>
+                            <p>Temperature reading is within normal range.</p>
+                        {% elif temp_value < 36.0 %}
+                            <div class="result-badge warning">
+                                <i class="fas fa-thermometer-empty"></i>
+                                Below Normal
+                            </div>
+                            <p>Temperature is below normal range. May indicate circulation issues.</p>
+                        {% else %}
+                            <div class="result-badge warning">
+                                <i class="fas fa-thermometer-full"></i>
+                                Above Normal
+                            </div>
+                            <p>Temperature is above normal range. May indicate inflammation.</p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if measurement.spo2 %}
+                <div class="analysis-section">
+                    <h4>SpO2 Assessment</h4>
+                    <div class="assessment-result">
+                        {% set spo2_value = measurement.spo2 %}
+                        {% if spo2_value >= 95 %}
+                            <div class="result-badge normal">
+                                <i class="fas fa-check-circle"></i>
+                                Normal Oxygen Level
+                            </div>
+                            <p>SpO2 reading indicates adequate oxygen saturation.</p>
+                        {% elif spo2_value >= 90 %}
+                            <div class="result-badge warning">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                Mild Hypoxemia
+                            </div>
+                            <p>SpO2 is slightly below normal. Monitor for trends.</p>
+                        {% else %}
+                            <div class="result-badge danger">
+                                <i class="fas fa-exclamation-circle"></i>
+                                Significant Hypoxemia
+                            </div>
+                            <p>SpO2 indicates low oxygen levels. Medical attention may be needed.</p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Notes Section -->
+        <div class="detail-card notes-section">
+            <div class="card-header">
+                <h3>
+                    <i class="fas fa-sticky-note"></i>
+                    Notes
+                </h3>
+                <button class="btn btn-outline btn-sm" id="editNotesBtn">
+                    <i class="fas fa-edit"></i>
+                    {% if measurement.notes %}Edit{% else %}Add{% endif %} Notes
+                </button>
+            </div>
+            <div class="card-content">
+                <div id="notesDisplay" class="notes-display">
+                    {% if measurement.notes %}
+                        {{ measurement.notes }}
+                    {% else %}
+                        <p class="no-notes">No notes added for this measurement.</p>
+                    {% endif %}
+                </div>
+                <div id="notesEditor" class="notes-editor" style="display: none;">
+                    <textarea id="notesTextarea" class="notes-textarea" placeholder="Add your notes about this measurement...">{{ measurement.notes or '' }}</textarea>
+                    <div class="notes-actions">
+                        <button class="btn btn-primary" id="saveNotesBtn">
+                            <i class="fas fa-save"></i>
+                            Save
+                        </button>
+                        <button class="btn btn-outline" id="cancelNotesBtn">
+                            <i class="fas fa-times"></i>
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions Card -->
+        <div class="detail-card actions-card">
+            <div class="card-header">
+                <h3>
+                    <i class="fas fa-tools"></i>
+                    Actions
+                </h3>
+            </div>
+            <div class="card-content">
+                <div class="action-buttons">
+                    <button class="btn btn-primary" onclick="window.location.href='/my-data'">
+                        <i class="fas fa-chart-bar"></i>
+                        View in Dashboard
+                    </button>
+                    <button class="btn btn-outline" onclick="shareMeasurement()">
+                        <i class="fas fa-share"></i>
+                        Share
+                    </button>
+                    <button class="btn btn-outline" onclick="compareMeasurements()">
+                        <i class="fas fa-balance-scale"></i>
+                        Compare
+                    </button>
+                    <button class="btn btn-danger" onclick="deleteMeasurement()">
+                        <i class="fas fa-trash"></i>
+                        Delete
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.measurement-detail-content {
+    padding: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 2rem;
+    gap: 2rem;
+}
+
+.breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    font-size: 0.875rem;
+}
+
+.breadcrumb-link {
+    color: var(--primary-blue);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.breadcrumb-link:hover {
+    text-decoration: underline;
+}
+
+.breadcrumb-separator {
+    color: var(--gray);
+}
+
+.breadcrumb-current {
+    color: var(--gray);
+}
+
+.header-info h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin-bottom: 1rem;
+}
+
+.measurement-meta {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.meta-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--gray);
+    font-size: 0.875rem;
+}
+
+.meta-item i {
+    color: var(--primary-blue);
+}
+
+.header-actions {
+    display: flex;
+    gap: 1rem;
+    flex-shrink: 0;
+}
+
+.detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+}
+
+.detail-card {
+    background: var(--white);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    border: 1px solid var(--light-gray);
+    overflow: hidden;
+}
+
+.detail-card.measurement-overview,
+.detail-card.notes-section {
+    grid-column: 1 / -1;
+}
+
+.card-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--light-gray);
+    background: linear-gradient(135deg, var(--off-white), rgba(96, 165, 250, 0.05));
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.card-header h3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-dark);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 0;
+}
+
+.card-header i {
+    color: var(--primary-blue);
+}
+
+.card-content {
+    padding: 1.5rem;
+}
+
+.overview-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.stat-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: var(--off-white);
+    border-radius: 8px;
+    border: 1px solid var(--light-gray);
+}
+
+.stat-item.primary {
+    background: linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(59, 130, 246, 0.05));
+    border-color: rgba(37, 99, 235, 0.2);
+}
+
+.stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--white);
+    font-size: 1.2rem;
+    background: linear-gradient(135deg, var(--primary-blue), var(--secondary-blue));
+}
+
+.stat-icon.temp {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+}
+
+.stat-icon.spo2 {
+    background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+}
+
+.stat-content {
+    flex: 1;
+}
+
+.stat-label {
+    font-size: 0.875rem;
+    color: var(--gray);
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-dark);
+}
+
+.measurement-location h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-dark);
+    margin-bottom: 1rem;
+}
+
+.location-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.location-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: var(--primary-blue);
+    color: var(--white);
+    border-radius: 20px;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.location-description {
+    color: var(--gray);
+    font-size: 0.875rem;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.info-label {
+    font-size: 0.75rem;
+    color: var(--gray);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.info-value {
+    font-size: 0.875rem;
+    color: var(--text-dark);
+    font-weight: 600;
+}
+
+.quality-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.quality-badge.good {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success);
+}
+
+.analysis-section {
+    margin-bottom: 1.5rem;
+}
+
+.analysis-section:last-child {
+    margin-bottom: 0;
+}
+
+.analysis-section h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-dark);
+    margin-bottom: 0.75rem;
+}
+
+.assessment-result {
+    margin-bottom: 0.75rem;
+}
+
+.result-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.result-badge.normal {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success);
+}
+
+.result-badge.warning {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--warning);
+}
+
+.result-badge.danger {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--danger);
+}
+
+.assessment-result p {
+    color: var(--gray);
+    font-size: 0.875rem;
+    line-height: 1.5;
+    margin: 0;
+}
+
+.notes-display {
+    min-height: 100px;
+}
+
+.no-notes {
+    color: var(--gray);
+    font-style: italic;
+    margin: 0;
+}
+
+.notes-editor {
+    width: 100%;
+}
+
+.notes-textarea {
+    width: 100%;
+    min-height: 120px;
+    padding: 1rem;
+    border: 1px solid var(--light-gray);
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    resize: vertical;
+}
+
+.notes-textarea:focus {
+    outline: none;
+    border-color: var(--primary-blue);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.notes-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.action-buttons {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.875rem;
+    transition: var(--transition);
+    border: none;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.btn-sm {
+    padding: 0.5rem 1rem;
+    font-size: 0.75rem;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary-blue), var(--secondary-blue));
+    color: var(--white);
+    box-shadow: var(--shadow);
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-lg);
+}
+
+.btn-outline {
+    background: transparent;
+    color: var(--gray);
+    border: 1px solid var(--light-gray);
+}
+
+.btn-outline:hover {
+    background: var(--off-white);
+    border-color: var(--primary-blue);
+    color: var(--primary-blue);
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, var(--danger), #dc2626);
+    color: var(--white);
+}
+
+.btn-danger:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-lg);
+}
+
+@media (max-width: 768px) {
+    .measurement-detail-content {
+        padding: 1rem;
+    }
+    
+    .detail-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .measurement-meta {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    .detail-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .overview-stats {
+        grid-template-columns: 1fr;
+    }
+    
+    .info-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .action-buttons {
+        grid-template-columns: 1fr;
+    }
+    
+    .notes-actions {
+        flex-direction: column;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    setupNotesEditor();
+    setupExport();
+});
+
+function setupNotesEditor() {
+    const editBtn = document.getElementById('editNotesBtn');
+    const saveBtn = document.getElementById('saveNotesBtn');
+    const cancelBtn = document.getElementById('cancelNotesBtn');
+    const display = document.getElementById('notesDisplay');
+    const editor = document.getElementById('notesEditor');
+    const textarea = document.getElementById('notesTextarea');
+    
+    let originalNotes = textarea.value;
+    
+    editBtn.addEventListener('click', function() {
+        display.style.display = 'none';
+        editor.style.display = 'block';
+        textarea.focus();
+    });
+    
+    cancelBtn.addEventListener('click', function() {
+        textarea.value = originalNotes;
+        editor.style.display = 'none';
+        display.style.display = 'block';
+    });
+    
+    saveBtn.addEventListener('click', function() {
+        const notes = textarea.value.trim();
+        
+        fetch(`/api/measurements/{{ measurement.id }}/notes`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ notes: notes })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                originalNotes = notes;
+                updateNotesDisplay(notes);
+                editor.style.display = 'none';
+                display.style.display = 'block';
+                
+                // Update button text
+                editBtn.innerHTML = `<i class="fas fa-edit"></i> ${notes ? 'Edit' : 'Add'} Notes`;
+            } else {
+                alert('Error saving notes: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('Error saving notes: ' + error.message);
+        });
+    });
+}
+
+function updateNotesDisplay(notes) {
+    const display = document.getElementById('notesDisplay');
+    if (notes) {
+        display.innerHTML = notes;
+    } else {
+        display.innerHTML = '<p class="no-notes">No notes added for this measurement.</p>';
+    }
+}
+
+function setupExport() {
+    document.getElementById('exportBtn').addEventListener('click', function() {
+        window.location.href = `/api/measurements/{{ measurement.id }}/export`;
+    });
+}
+
+function shareMeasurement() {
+    const url = window.location.href;
+    navigator.clipboard.writeText(url).then(function() {
+        alert('Measurement link copied to clipboard');
+    }).catch(function() {
+        alert('Could not copy link. URL: ' + url);
+    });
+}
+
+function compareMeasurements() {
+    window.location.href = '/history?compare={{ measurement.id }}';
+}
+
+function deleteMeasurement() {
+    if (confirm('Are you sure you want to delete this measurement? This action cannot be undone.')) {
+        fetch(`/api/measurements/{{ measurement.id }}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                window.location.href = '/history';
+            } else {
+                alert('Error deleting measurement: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('Error deleting measurement: ' + error.message);
+        });
+    }
+}
+</script>
+{% endblock %}

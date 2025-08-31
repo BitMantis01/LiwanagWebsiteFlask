@@ -4,12 +4,14 @@ from werkzeug.security import generate_password_hash
 from datetime import datetime, timezone, timedelta
 import os
 import secrets
+import csv
+from io import StringIO
 from dotenv import load_dotenv
 import pytz
 from functools import wraps
 
 # Import models and forms
-from models import db, User, Session, Measurement, APIKey, MEASUREMENT_POINTS
+from models import db, User, Measurement, APIKey, MEASUREMENT_POINTS, CHART_COLORS
 from forms import LoginForm, RegistrationForm, UpdateProfileForm, ChangePasswordForm
 from utils import generate_avatar, create_chart_colors
 
@@ -151,22 +153,24 @@ def logout():
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    # Get user's recent sessions
-    recent_sessions = Session.query.filter_by(user_id=current_user.id)\
-                                 .order_by(Session.created_at.desc())\
-                                 .limit(5).all()
+    # Get user's recent measurements
+    recent_measurements = Measurement.query.filter_by(user_id=current_user.id)\
+                                          .order_by(Measurement.timestamp.desc())\
+                                          .limit(10).all()
     
     # Get statistics
-    total_sessions = Session.query.filter_by(user_id=current_user.id).count()
-    total_measurements = db.session.query(Measurement)\
-                                 .join(Session)\
-                                 .filter(Session.user_id == current_user.id)\
-                                 .count()
+    total_measurements = Measurement.query.filter_by(user_id=current_user.id).count()
+    
+    # Get today's measurements count
+    today = datetime.now(timezone.utc).date()
+    today_measurements = Measurement.query.filter_by(user_id=current_user.id)\
+                                         .filter(db.func.date(Measurement.timestamp) == today)\
+                                         .count()
     
     return render_template('dashboard/dashboard.html', 
-                         recent_sessions=recent_sessions,
-                         total_sessions=total_sessions,
+                         recent_measurements=recent_measurements,
                          total_measurements=total_measurements,
+                         today_measurements=today_measurements,
                          convert_timezone=convert_utc_to_gmt8)
 
 @app.route('/profile', methods=['GET', 'POST'])
@@ -223,6 +227,9 @@ def change_password():
 @app.route('/avatar/<username>')
 def avatar(username):
     """Generate and serve user avatar"""
+    from flask import Response
+    import base64
+    
     user = User.query.filter_by(username=username).first()
     if not user:
         # Generate default avatar
@@ -243,25 +250,32 @@ def avatar(username):
                 user.profile_picture = avatar_data
                 db.session.commit()
     
-    return avatar_data
+    # Extract the base64 data from the data URL
+    if avatar_data.startswith('data:image/png;base64,'):
+        base64_data = avatar_data.split(',')[1]
+        image_data = base64.b64decode(base64_data)
+        
+        return Response(
+            image_data,
+            mimetype='image/png',
+            headers={
+                'Cache-Control': 'public, max-age=3600',  # Cache for 1 hour
+                'Content-Type': 'image/png'
+            }
+        )
+    else:
+        # Fallback - return a simple response
+        return Response("Avatar not available", status=404)
 
 # Data visualization routes
 @app.route('/my-data')
 @login_required
 def my_data():
-    # Get current session or latest session
-    current_session = Session.query.filter_by(user_id=current_user.id, status='active').first()
-    if not current_session:
-        current_session = Session.query.filter_by(user_id=current_user.id)\
-                                      .order_by(Session.created_at.desc()).first()
-    
-    measurements = []
-    if current_session:
-        measurements = Measurement.query.filter_by(session_id=current_session.id)\
-                                       .order_by(Measurement.timestamp.desc()).all()
+    # Get user's recent measurements
+    measurements = Measurement.query.filter_by(user_id=current_user.id)\
+                                   .order_by(Measurement.timestamp.desc()).all()
     
     return render_template('dashboard/my_data.html', 
-                         session=current_session,
                          measurements=measurements,
                          measurement_points=MEASUREMENT_POINTS,
                          convert_timezone=convert_utc_to_gmt8)
@@ -269,23 +283,21 @@ def my_data():
 @app.route('/history')
 @login_required
 def history():
-    sessions = Session.query.filter_by(user_id=current_user.id)\
-                           .order_by(Session.created_at.desc()).all()
-    
-    return render_template('dashboard/history.html', 
-                         sessions=sessions,
-                         convert_timezone=convert_utc_to_gmt8)
-
-@app.route('/history/<int:session_id>')
-@login_required
-def view_session(session_id):
-    session = Session.query.filter_by(id=session_id, user_id=current_user.id).first_or_404()
-    measurements = Measurement.query.filter_by(session_id=session_id)\
+    # Get user's measurements grouped by date
+    measurements = Measurement.query.filter_by(user_id=current_user.id)\
                                    .order_by(Measurement.timestamp.desc()).all()
     
-    return render_template('dashboard/session_detail.html',
-                         session=session,
+    return render_template('dashboard/history.html', 
                          measurements=measurements,
+                         convert_timezone=convert_utc_to_gmt8)
+
+@app.route('/measurement/<int:measurement_id>')
+@login_required
+def view_measurement(measurement_id):
+    measurement = Measurement.query.filter_by(id=measurement_id, user_id=current_user.id).first_or_404()
+    
+    return render_template('dashboard/measurement_detail.html',
+                         measurement=measurement,
                          measurement_points=MEASUREMENT_POINTS,
                          convert_timezone=convert_utc_to_gmt8)
 
@@ -298,7 +310,6 @@ def receive_data():
     Expected JSON format:
     {
         "user_id": 1,
-        "session_id": 1,  // optional, if not provided, creates new session
         "vpt": 5,
         "temp": 31.2,
         "spo2": 98,
@@ -322,26 +333,9 @@ def receive_data():
         if not user:
             return jsonify({'error': 'Invalid user_id'}), 400
         
-        # Get or create session
-        session_id = data.get('session_id')
-        if session_id:
-            session = Session.query.filter_by(id=session_id, user_id=user.id).first()
-            if not session:
-                return jsonify({'error': 'Invalid session_id'}), 400
-        else:
-            # Create new session
-            session_name = f"Session {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')}"
-            session = Session(
-                user_id=user.id,
-                session_name=session_name,
-                status='active'
-            )
-            db.session.add(session)
-            db.session.flush()  # Get the ID
-        
-        # Create measurement
+        # Create measurement directly
         measurement = Measurement(
-            session_id=session.id,
+            user_id=user.id,
             point_name=data['toe'],
             vpt_voltage=data.get('vpt'),
             temperature=data.get('temp'),
@@ -356,7 +350,6 @@ def receive_data():
             'success': True,
             'message': 'Data received successfully',
             'measurement_id': measurement.id,
-            'session_id': session.id,
             'timestamp': measurement.timestamp.isoformat()
         }), 201
         
@@ -364,52 +357,19 @@ def receive_data():
         db.session.rollback()
         return jsonify({'error': f'Internal server error: {str(e)}'}), 500
 
-@app.route('/api/session/complete', methods=['POST'])
+@app.route('/api/users/<int:user_id>/measurements')
 @require_api_key
-def complete_session():
-    """
-    API endpoint to mark a session as completed
-    Expected JSON: {"session_id": 1, "plantar_pressure_status": "Low"}
-    """
-    try:
-        data = request.get_json()
-        
-        if not data or 'session_id' not in data:
-            return jsonify({'error': 'session_id is required'}), 400
-        
-        session = Session.query.get(data['session_id'])
-        if not session:
-            return jsonify({'error': 'Session not found'}), 404
-        
-        session.status = 'completed'
-        session.completed_at = datetime.now(timezone.utc)
-        session.plantar_pressure_status = data.get('plantar_pressure_status', 'Unknown')
-        
-        db.session.commit()
-        
-        return jsonify({
-            'success': True,
-            'message': 'Session completed successfully',
-            'session': session.to_dict()
-        })
-        
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': f'Internal server error: {str(e)}'}), 500
-
-@app.route('/api/users/<int:user_id>/sessions')
-@require_api_key
-def get_user_sessions(user_id):
-    """Get all sessions for a user"""
+def get_user_measurements(user_id):
+    """Get all measurements for a user"""
     user = User.query.get(user_id)
     if not user:
         return jsonify({'error': 'User not found'}), 404
     
-    sessions = Session.query.filter_by(user_id=user_id)\
-                           .order_by(Session.created_at.desc()).all()
+    measurements = Measurement.query.filter_by(user_id=user_id)\
+                                   .order_by(Measurement.timestamp.desc()).all()
     
     return jsonify({
-        'sessions': [session.to_dict() for session in sessions]
+        'measurements': [measurement.to_dict() for measurement in measurements]
     })
 
 # Dashboard API endpoints for charts and tables
@@ -423,12 +383,11 @@ def get_chart_data():
     end_date = datetime.now(timezone.utc)
     start_date = end_date - timedelta(days=days)
     
-    # Get user's sessions and measurements within date range
-    user_sessions = Session.query.filter_by(user_id=current_user.id).subquery()
-    measurements = Measurement.query.join(user_sessions).filter(
-        Measurement.timestamp >= start_date,
-        Measurement.timestamp <= end_date
-    ).order_by(Measurement.timestamp).all()
+    # Get user's measurements within date range
+    measurements = Measurement.query.filter_by(user_id=current_user.id)\
+                                   .filter(Measurement.timestamp >= start_date)\
+                                   .filter(Measurement.timestamp <= end_date)\
+                                   .order_by(Measurement.timestamp).all()
     
     # Initialize chart data structure
     chart_data = {
@@ -450,7 +409,13 @@ def get_chart_data():
     # If we have very recent data (less than 24 hours), group by hour instead of day
     if measurements:
         latest_measurement = max(measurements, key=lambda x: x.timestamp)
-        time_diff = datetime.now(timezone.utc) - latest_measurement.timestamp
+        
+        # Ensure timestamp is timezone-aware for comparison
+        latest_timestamp = latest_measurement.timestamp
+        if latest_timestamp.tzinfo is None:
+            latest_timestamp = latest_timestamp.replace(tzinfo=timezone.utc)
+        
+        time_diff = datetime.now(timezone.utc) - latest_timestamp
         if time_diff.total_seconds() < 24 * 3600:  # Less than 24 hours
             time_format = '%m/%d %H:%M'  # Include time for recent data
         else:
@@ -535,12 +500,10 @@ def get_measurement_timeline():
     end_date = datetime.now(timezone.utc)
     start_date = end_date - timedelta(days=days)
     
-    # Get user's sessions and measurements within date range
-    user_sessions = Session.query.filter_by(user_id=current_user.id).subquery()
-    query = Measurement.query.join(user_sessions).filter(
-        Measurement.timestamp >= start_date,
-        Measurement.timestamp <= end_date
-    )
+    # Get user's measurements within date range
+    query = Measurement.query.filter_by(user_id=current_user.id)\
+                            .filter(Measurement.timestamp >= start_date)\
+                            .filter(Measurement.timestamp <= end_date)
     
     # Filter by specific point if provided
     if point_name:
@@ -575,9 +538,6 @@ def get_measurement_timeline():
 def get_current_vpt_readings():
     """Get current VPT readings for both feet"""
     
-    # Get latest measurements for user's sessions
-    user_sessions = Session.query.filter_by(user_id=current_user.id).subquery()
-    
     vpt_data = {
         'right': {},
         'left': {}
@@ -594,10 +554,10 @@ def get_current_vpt_readings():
             point_name = f"{foot.title()} {point_name_map[point]}"
             
             # Get latest VPT measurement for this point
-            latest_measurement = Measurement.query.join(user_sessions).filter(
-                Measurement.point_name == point_name,
-                Measurement.vpt_voltage.isnot(None)
-            ).order_by(Measurement.timestamp.desc()).first()
+            latest_measurement = Measurement.query.filter_by(user_id=current_user.id)\
+                                                 .filter(Measurement.point_name == point_name)\
+                                                 .filter(Measurement.vpt_voltage.isnot(None))\
+                                                 .order_by(Measurement.timestamp.desc()).first()
             
             if latest_measurement:
                 # Determine status based on voltage thresholds
@@ -630,9 +590,6 @@ def get_current_vpt_readings():
 def get_current_vitals_readings():
     """Get current temperature and SpO2 readings for both feet"""
     
-    # Get latest measurements for user's sessions
-    user_sessions = Session.query.filter_by(user_id=current_user.id).subquery()
-    
     vitals_data = {
         'right': {},
         'left': {}
@@ -649,11 +606,11 @@ def get_current_vitals_readings():
             point_name = f"{foot.title()} {point_name_map[point]}"
             
             # Get latest measurement with both temperature and SpO2
-            latest_measurement = Measurement.query.join(user_sessions).filter(
-                Measurement.point_name == point_name,
-                Measurement.temperature.isnot(None),
-                Measurement.spo2.isnot(None)
-            ).order_by(Measurement.timestamp.desc()).first()
+            latest_measurement = Measurement.query.filter_by(user_id=current_user.id)\
+                                                 .filter(Measurement.point_name == point_name)\
+                                                 .filter(Measurement.temperature.isnot(None))\
+                                                 .filter(Measurement.spo2.isnot(None))\
+                                                 .order_by(Measurement.timestamp.desc()).first()
             
             if latest_measurement:
                 temp_value = latest_measurement.temperature
@@ -712,25 +669,11 @@ def receive_sensor_data():
         # Validate toe location format (e.g., "Right Heel")
         toe_name = data['toe'].strip()
         
-        # Get or create current session for this user
-        current_session = Session.query.filter_by(
-            user_id=user.id,
-            completed_at=None
-        ).first()
-        
-        if not current_session:
-            current_session = Session(
-                user_id=user.id,
-                session_name=f'Auto Session {datetime.now().strftime("%Y-%m-%d %H:%M")}'
-            )
-            db.session.add(current_session)
-            db.session.flush()  # Get the session ID
-        
         # Create a single measurement record with all sensor data
         timestamp = datetime.now(timezone.utc)
         
         measurement = Measurement(
-            session_id=current_session.id,
+            user_id=user.id,
             point_name=toe_name,
             vpt_voltage=float(data['vpt']),
             temperature=float(data['temp']),
@@ -745,7 +688,6 @@ def receive_sensor_data():
             'success': True,
             'message': 'Sensor data received successfully',
             'measurement_id': measurement.id,
-            'session_id': current_session.id,
             'point_name': toe_name,
             'data': {
                 'vpt': measurement.vpt_voltage,
@@ -776,47 +718,12 @@ def create_tables():
         db.session.commit()
         print(f"Default API key created: {api_key}")
 
-# Session Management API Routes
-@app.route('/api/sessions/create', methods=['POST'])
+# Measurement Management API Routes
+@app.route('/api/measurements/export')
 @login_required
-def create_session_api():
-    """Create a new session via API"""
-    try:
-        data = request.get_json()
-        
-        if not data or 'sessionName' not in data:
-            return jsonify({'success': False, 'message': 'Session name is required'}), 400
-        
-        # Create new session
-        session = Session(
-            user_id=current_user.id,
-            session_name=data['sessionName'],
-            status='active'
-        )
-        db.session.add(session)
-        db.session.flush()  # Get the session ID
-        
-        # Store session configuration in the session (could extend model to store this)
-        # For now, just store basic session data
-        
-        db.session.commit()
-        
-        return jsonify({
-            'success': True,
-            'message': 'Session created successfully',
-            'session_id': session.id
-        })
-        
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-@app.route('/api/sessions/<int:session_id>/export')
-@login_required
-def export_session(session_id):
-    """Export session data as CSV"""
-    session = Session.query.filter_by(id=session_id, user_id=current_user.id).first_or_404()
-    measurements = Measurement.query.filter_by(session_id=session_id)\
+def export_measurements():
+    """Export user's measurement data as CSV"""
+    measurements = Measurement.query.filter_by(user_id=current_user.id)\
                                    .order_by(Measurement.timestamp.asc()).all()
     
     # Create CSV content
@@ -826,170 +733,95 @@ def export_session(session_id):
         csv_content += f"{measurement.vpt_voltage},{measurement.temperature},{measurement.spo2}\n"
     
     response = make_response(csv_content)
-    response.headers["Content-Disposition"] = f"attachment; filename=session_{session_id}_data.csv"
+    response.headers["Content-Disposition"] = f"attachment; filename=measurements_{current_user.username}.csv"
     response.headers["Content-type"] = "text/csv"
     
     return response
 
-@app.route('/api/sessions/<int:session_id>/duplicate', methods=['POST'])
+@app.route('/api/measurements/<int:measurement_id>/export')
 @login_required
-def duplicate_session(session_id):
-    """Duplicate a session"""
-    try:
-        original_session = Session.query.filter_by(id=session_id, user_id=current_user.id).first_or_404()
-        
-        # Create new session
-        new_session = Session(
-            user_id=current_user.id,
-            session_name=f"{original_session.session_name} (Copy)",
-            status='active'
-        )
-        db.session.add(new_session)
-        db.session.flush()
-        
-        # Copy measurements from original session
-        original_measurements = Measurement.query.filter_by(session_id=session_id).all()
-        for measurement in original_measurements:
-            new_measurement = Measurement(
-                session_id=new_session.id,
-                point_name=measurement.point_name,
-                vpt_voltage=measurement.vpt_voltage,
-                temperature=measurement.temperature,
-                spo2=measurement.spo2
-            )
-            db.session.add(new_measurement)
-        
-        db.session.commit()
-        
-        return jsonify({
-            'success': True,
-            'message': 'Session duplicated successfully',
-            'new_session_id': new_session.id
-        })
-        
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-@app.route('/api/sessions/<int:session_id>/pause', methods=['POST'])
-@login_required
-def pause_session(session_id):
-    """Pause a session"""
-    try:
-        session = Session.query.filter_by(id=session_id, user_id=current_user.id).first_or_404()
-        session.status = 'paused'
-        db.session.commit()
-        
-        return jsonify({
-            'success': True,
-            'message': 'Session paused successfully'
-        })
-        
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-@app.route('/api/sessions/<int:session_id>/complete', methods=['POST'])
-@login_required
-def complete_session_api(session_id):
-    """Complete a session via API"""
-    try:
-        session = Session.query.filter_by(id=session_id, user_id=current_user.id).first_or_404()
-        session.status = 'completed'
-        session.completed_at = datetime.now(timezone.utc)
-        db.session.commit()
-        
-        return jsonify({
-            'success': True,
-            'message': 'Session completed successfully'
-        })
-        
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-@app.route('/api/sessions/<int:session_id>', methods=['DELETE'])
-@login_required
-def delete_session(session_id):
-    """Delete a session"""
-    try:
-        session = Session.query.filter_by(id=session_id, user_id=current_user.id).first_or_404()
-        
-        # Delete all measurements first (cascade should handle this, but being explicit)
-        Measurement.query.filter_by(session_id=session_id).delete()
-        
-        # Delete the session
-        db.session.delete(session)
-        db.session.commit()
-        
-        return jsonify({
-            'success': True,
-            'message': 'Session deleted successfully'
-        })
-        
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-@app.route('/api/sessions/<int:session_id>/measurements')
-@login_required
-def get_session_measurements(session_id):
-    """Get all measurements for a session (for real-time updates)"""
-    try:
-        # Verify session belongs to current user
-        session = Session.query.filter_by(id=session_id, user_id=current_user.id).first_or_404()
-        
-        # Get all measurements for the session
-        measurements = Measurement.query.filter_by(session_id=session_id).order_by(Measurement.timestamp.asc()).all()
-        
-        # Convert to JSON
-        measurements_data = []
-        for measurement in measurements:
-            measurements_data.append({
-                'id': measurement.id,
-                'timestamp': measurement.timestamp.isoformat(),
-                'point_name': measurement.point_name,
-                'vpt_voltage': measurement.vpt_voltage,
-                'temperature': measurement.temperature,
-                'spo2': measurement.spo2
-            })
-        
-        return jsonify({
-            'success': True,
-            'session_id': session_id,
-            'measurements': measurements_data,
-            'count': len(measurements_data)
-        })
-        
-    except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-# Page Routes
-@app.route('/new-session')
-@login_required
-def new_session():
-    """Create a new session page"""
-    sessions = Session.query.filter_by(user_id=current_user.id).all()
-    return render_template('dashboard/new_session.html',
-                         measurement_points=MEASUREMENT_POINTS,
-                         sessions=sessions)
-
-@app.route('/session/<int:session_id>/continue')
-@login_required
-def continue_session(session_id):
-    """Continue a session"""
-    session = Session.query.filter_by(id=session_id, user_id=current_user.id).first_or_404()
+def export_single_measurement(measurement_id):
+    """Export a single measurement as CSV"""
+    measurement = Measurement.query.filter_by(id=measurement_id, user_id=current_user.id).first_or_404()
     
-    # Reactivate the session if it was paused
-    if session.status == 'paused':
-        session.status = 'active'
-        db.session.commit()
+    output = StringIO()
+    writer = csv.writer(output)
     
-    # Redirect to the data collection page
-    return redirect(url_for('my_data'))
+    # Write headers
+    writer.writerow(['Measurement ID', 'Point Name', 'Timestamp', 'VPT Voltage', 'Temperature', 'SpO2', 'Notes'])
+    
+    # Write measurement data
+    timestamp_local = convert_utc_to_gmt8(measurement.timestamp)
+    writer.writerow([
+        measurement.id,
+        measurement.point_name,
+        timestamp_local.strftime('%Y-%m-%d %H:%M:%S'),
+        measurement.vpt_voltage or '',
+        measurement.temperature or '',
+        measurement.spo2 or '',
+        measurement.notes or ''
+    ])
+    
+    response = make_response(output.getvalue())
+    response.headers["Content-Disposition"] = f"attachment; filename=measurement_{measurement_id}.csv"
+    response.headers["Content-type"] = "text/csv"
+    
+    return response
+
+@app.route('/api/measurements/<int:measurement_id>', methods=['DELETE'])
+@login_required
+def delete_measurement(measurement_id):
+    """Delete a measurement"""
+    try:
+        measurement = Measurement.query.filter_by(id=measurement_id, user_id=current_user.id).first_or_404()
+        
+        db.session.delete(measurement)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Measurement deleted successfully'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/measurements/<int:measurement_id>/notes', methods=['PUT'])
+@login_required
+def update_measurement_notes(measurement_id):
+    """Update notes for a measurement"""
+    try:
+        measurement = Measurement.query.filter_by(id=measurement_id, user_id=current_user.id).first_or_404()
+        
+        data = request.get_json()
+        notes = data.get('notes', '')
+        
+        measurement.notes = notes
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Notes updated successfully'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+# Page Routes  
+@app.route('/measurements')
+@login_required
+def measurements():
+    """Measurements page"""
+    measurements = Measurement.query.filter_by(user_id=current_user.id)\
+                                   .order_by(Measurement.timestamp.desc()).all()
+    return render_template('dashboard/measurements.html',
+                         measurements=measurements,
+                         measurement_points=MEASUREMENT_POINTS)
 
 if __name__ == '__main__':
     with app.app_context():
         create_tables()
     
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=2214)

@@ -64,7 +64,8 @@ A comprehensive web application for diabetic foot assessment using Vibration Per
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/BitMantis01/LiwanagWebsiteFlask
+git clone <repository-url>
+cd RalphWebsite
 ```
 
 ### 2. Create Virtual Environment
@@ -233,7 +234,7 @@ Get current temperature and SpO2 readings (requires login).
 ## 📁 Project Structure
 
 ```
-LiwanagWebsite/
+RalphWebsite/
 ├── app.py                  # Main Flask application
 ├── models.py              # Database models and schemas
 ├── forms.py               # WTForms for user input validation
